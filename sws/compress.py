@@ -3,17 +3,27 @@ from typing import Dict, Tuple
 import torch
 from sws.utils import flatten_conv_to_2d, collect_weight_params
 
-def _shannon_bits(counts: Dict[int,int]) -> float:
+
+def _shannon_bits(counts: Dict[int, int]) -> float:
     total = sum(counts.values())
-    if total == 0: return 0.0
+    if total == 0:
+        return 0.0
     bits = 0.0
     for c in counts.values():
         p = c / total
         bits += -c * math.log2(max(p, 1e-12))
     return bits
 
-def _csr_bits_for_layer(W2d: torch.Tensor, comp_ids: torch.Tensor, J: int, is_conv: bool,
-                        pbits_fc: int = 5, pbits_conv: int = 8, use_huffman: bool = True) -> Tuple[int,int,int,int,int]:
+
+def _csr_bits_for_layer(
+    W2d: torch.Tensor,
+    comp_ids: torch.Tensor,
+    J: int,
+    is_conv: bool,
+    pbits_fc: int = 5,
+    pbits_conv: int = 8,
+    use_huffman: bool = True,
+) -> Tuple[int, int, int, int, int]:
     W = W2d.detach().cpu().numpy()
     comp = comp_ids.detach().cpu().numpy()
 
@@ -23,14 +33,14 @@ def _csr_bits_for_layer(W2d: torch.Tensor, comp_ids: torch.Tensor, J: int, is_co
     colidx = []
     for r in range(rows):
         nz_cols = (comp[r] > 0).nonzero()[0]
-        nz_ids  = comp[r, nz_cols]
+        nz_ids = comp[r, nz_cols]
         nonzeros.extend(list(nz_ids))
         colidx.extend(list(nz_cols))
         rowptr.append(len(nonzeros))
 
     nnz = len(nonzeros)
 
-    p_ir = max(1, int(math.ceil(math.log2(max(nnz,1)+1))))
+    p_ir = max(1, int(math.ceil(math.log2(max(nnz, 1) + 1))))
     bits_IR = (rows + 1) * p_ir
 
     pbits = pbits_conv if is_conv else pbits_fc
@@ -38,7 +48,7 @@ def _csr_bits_for_layer(W2d: torch.Tensor, comp_ids: torch.Tensor, J: int, is_co
     ic_diffs = []
     padded_nonzeros = []
     for r in range(rows):
-        s, e = rowptr[r], rowptr[r+1]
+        s, e = rowptr[r], rowptr[r + 1]
         prev_c = 0
         for k in range(s, e):
             c = colidx[k]
@@ -65,55 +75,80 @@ def _csr_bits_for_layer(W2d: torch.Tensor, comp_ids: torch.Tensor, J: int, is_co
     else:
         bits_A = len(nz_vals) * int(math.ceil(math.log2(max(2, J))))
 
-    bits_codebook = (J-1) * 32
+    bits_codebook = (J - 1) * 32
     return bits_IR, bits_IC, bits_A, bits_codebook, nnz
 
+
 @torch.no_grad()
-def compression_report(model: torch.nn.Module, prior, dataset: str,
-                       use_huffman: bool = True, pbits_fc: int = 5, pbits_conv: int = 8) -> Dict:
+def compression_report(
+    model: torch.nn.Module,
+    prior,
+    dataset: str,
+    use_huffman: bool = True,
+    pbits_fc: int = 5,
+    pbits_conv: int = 8,
+) -> Dict:
     mu, sigma2, pi = prior.mixture_params()
     device = mu.device
     log_pi = torch.log(pi + 1e-8)
-    const = -0.5*torch.log(2*math.pi*sigma2)
-    inv_s2 = 1.0/sigma2
+    const = -0.5 * torch.log(2 * math.pi * sigma2)
+    inv_s2 = 1.0 / sigma2
     total_orig_bits = 0
     total_bits_IR = total_bits_IC = total_bits_A = total_codebook = 0
     total_nnz = 0
     layers = []
 
     for m in model.modules():
-        if not isinstance(m, (torch.nn.Linear, torch.nn.Conv2d)): continue
+        if not isinstance(m, (torch.nn.Linear, torch.nn.Conv2d)):
+            continue
         W = m.weight.data
         total_orig_bits += W.numel() * 32
-        w = W.view(-1,1)
-        scores = log_pi.unsqueeze(0) + const.unsqueeze(0) - 0.5*((w - mu.unsqueeze(0))**2 * inv_s2.unsqueeze(0))
+        w = W.view(-1, 1)
+        scores = (
+            log_pi.unsqueeze(0)
+            + const.unsqueeze(0)
+            - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0))
+        )
         idx = torch.argmax(scores, dim=1)
         comp_ids = idx.view_as(W)
-        comp_ids = torch.where(comp_ids>0, comp_ids, torch.tensor(0, device=device))
+        comp_ids = torch.where(comp_ids > 0, comp_ids, torch.tensor(0, device=device))
         W2d = flatten_conv_to_2d(W)
         comp2d = flatten_conv_to_2d(comp_ids)
         bits_IR, bits_IC, bits_A, bits_codebook, nnz = _csr_bits_for_layer(
-            W2d, comp2d, prior.J, is_conv=isinstance(m, torch.nn.Conv2d),
-            pbits_fc=pbits_fc, pbits_conv=pbits_conv, use_huffman=use_huffman
+            W2d,
+            comp2d,
+            prior.J,
+            is_conv=isinstance(m, torch.nn.Conv2d),
+            pbits_fc=pbits_fc,
+            pbits_conv=pbits_conv,
+            use_huffman=use_huffman,
         )
         total_bits_IR += bits_IR
         total_bits_IC += bits_IC
-        total_bits_A  += bits_A
+        total_bits_A += bits_A
         total_codebook += bits_codebook
         total_nnz += nnz
-        layers.append({
-            "layer": m.__class__.__name__,
-            "shape": list(W.shape),
-            "orig_bits": W.numel()*32,
-            "bits_IR": bits_IR, "bits_IC": bits_IC, "bits_A": bits_A, "bits_codebook": bits_codebook, "nnz": nnz
-        })
+        layers.append(
+            {
+                "layer": m.__class__.__name__,
+                "shape": list(W.shape),
+                "orig_bits": W.numel() * 32,
+                "bits_IR": bits_IR,
+                "bits_IC": bits_IC,
+                "bits_A": bits_A,
+                "bits_codebook": bits_codebook,
+                "nnz": nnz,
+            }
+        )
 
-    total_compressed_bits = total_bits_IR + total_bits_IC + total_bits_A + total_codebook
+    total_compressed_bits = (
+        total_bits_IR + total_bits_IC + total_bits_A + total_codebook
+    )
     CR = total_orig_bits / max(total_compressed_bits, 1)
     return {
         "orig_bits": int(total_orig_bits),
         "compressed_bits": int(total_compressed_bits),
         "CR": float(CR),
         "nnz": int(total_nnz),
-        "layers": layers
+        "layers": layers,
     }

@@ -4,24 +4,33 @@ from typing import Iterable, Dict, Any
 import numpy as np
 import torch
 
+
 def set_seed(seed: int):
-    random.seed(seed); np.random.seed(seed)
-    torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
 
 def get_device():
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def ensure_dir(path: str):
     os.makedirs(path, exist_ok=True)
+
 
 def format_seconds(s: float) -> str:
     m, s = divmod(int(s), 60)
     h, m = divmod(m, 60)
-    if h: return f"{h}h{m:02d}m{s:02d}s"
-    if m: return f"{m}m{s:02d}s"
+    if h:
+        return f"{h}h{m:02d}m{s:02d}s"
+    if m:
+        return f"{m}m{s:02d}s"
     return f"{s}s"
+
 
 @dataclass
 class EnvInfo:
@@ -31,6 +40,7 @@ class EnvInfo:
     cuda_is_available: bool
     cudnn_is_available: bool
     device: str
+
 
 def collect_env() -> Dict[str, Any]:
     info = EnvInfo(
@@ -42,6 +52,7 @@ def collect_env() -> Dict[str, Any]:
         device=("cuda" if torch.cuda.is_available() else "cpu"),
     )
     return asdict(info)
+
 
 class CSVLogger:
     def __init__(self, path: str, header: Iterable[str]):
@@ -57,20 +68,24 @@ class CSVLogger:
         with open(self.path, "a") as f:
             f.write(",".join(str(v) for v in vals) + "\n")
 
+
 def collect_weight_params(model) -> list:
     import torch.nn as nn
+
     params = []
     for m in model.modules():
         if isinstance(m, (nn.Linear, nn.Conv2d)):
             params.append(m.weight)
     return params
 
+
 def flatten_conv_to_2d(weight):
     # Conv: (out_c, in_c, kh, kw) -> (out_c, in_c*kh*kw)
     import torch
+
     if weight.ndim == 4:
         out_c, in_c, kh, kw = weight.shape
-        return weight.reshape(out_c, in_c*kh*kw)
+        return weight.reshape(out_c, in_c * kh * kw)
     elif weight.ndim == 2:
         return weight
     else:

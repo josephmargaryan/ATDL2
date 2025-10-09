@@ -2,14 +2,20 @@ import os, json, argparse
 import torch
 import matplotlib.pyplot as plt
 
+
 def load_state_dict(path, map_location="cpu"):
     return torch.load(path, map_location=map_location)
+
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", required=True)
-    ap.add_argument("--checkpoint", choices=["pre", "prequant", "quantized"], default="prequant",
-                    help="Which weights to histogram.")
+    ap.add_argument(
+        "--checkpoint",
+        choices=["pre", "prequant", "quantized"],
+        default="prequant",
+        help="Which weights to histogram.",
+    )
     args = ap.parse_args()
 
     mix_path = os.path.join(args.run_dir, "mixture_final.json")
@@ -36,7 +42,7 @@ def main():
     else:
         sd = load_state_dict(ckpt)
         weights = []
-        for k,v in sd.items():
+        for k, v in sd.items():
             if k.endswith(".weight"):
                 weights.append(v.view(-1).float().cpu())
         if weights:
@@ -47,10 +53,12 @@ def main():
     # Plot mixture params
     plt.figure()
     xs = mu.numpy()
-    ys = (sigma2.sqrt().numpy())
+    ys = sigma2.sqrt().numpy()
     sizes = 300 * (pi.numpy() / pi.numpy().max())
     plt.scatter(xs, ys, s=sizes)
-    plt.xlabel("component mean μ"); plt.ylabel("σ"); plt.title("Mixture components (size ∝ π)")
+    plt.xlabel("component mean μ")
+    plt.ylabel("σ")
+    plt.title("Mixture components (size ∝ π)")
     plt.tight_layout()
     plt.savefig(os.path.join(args.run_dir, "plot_mixture_components.png"))
 
@@ -61,16 +69,24 @@ def main():
         plt.hist(ws, bins=120, density=True, alpha=0.5)
         # overlay mixture
         import numpy as np
+
         grid = np.linspace(ws.min(), ws.max(), 1000)
         pdf = 0
         for j in range(len(xs)):
-            pdf += (pi[j].item()) * (1.0/np.sqrt(2*np.pi*sigma2[j].item())) * np.exp(-(grid - mu[j].item())**2/(2*sigma2[j].item()))
+            pdf += (
+                (pi[j].item())
+                * (1.0 / np.sqrt(2 * np.pi * sigma2[j].item()))
+                * np.exp(-((grid - mu[j].item()) ** 2) / (2 * sigma2[j].item()))
+            )
         plt.plot(grid, pdf)
-        plt.xlabel("w"); plt.ylabel("density"); plt.title(f"Weight histogram + mixture pdf ({args.checkpoint})")
+        plt.xlabel("w")
+        plt.ylabel("density")
+        plt.title(f"Weight histogram + mixture pdf ({args.checkpoint})")
         plt.tight_layout()
         plt.savefig(os.path.join(args.run_dir, "plot_weights_mixture.png"))
 
     print(f"Saved mixture plots to {args.run_dir}")
+
 
 if __name__ == "__main__":
     main()

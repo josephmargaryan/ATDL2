@@ -4,24 +4,30 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
+
 def load_weights(sd):
     ws = []
-    for k,v in sd.items():
+    for k, v in sd.items():
         if k.endswith(".weight"):
             ws.append(v.view(-1).float().cpu())
     return torch.cat(ws) if ws else torch.tensor([])
 
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", required=True)
-    ap.add_argument("--sample", type=int, default=20000, help="number of weights to scatter")
+    ap.add_argument(
+        "--sample", type=int, default=20000, help="number of weights to scatter"
+    )
     args = ap.parse_args()
 
     # Find checkpoints
     ckpt_pre = ckpt_prequant = None
     for fn in os.listdir(args.run_dir):
-        if fn.endswith("_pre.pt"): ckpt_pre = os.path.join(args.run_dir, fn)
-        if fn.endswith("_prequant.pt"): ckpt_prequant = os.path.join(args.run_dir, fn)
+        if fn.endswith("_pre.pt"):
+            ckpt_pre = os.path.join(args.run_dir, fn)
+        if fn.endswith("_prequant.pt"):
+            ckpt_prequant = os.path.join(args.run_dir, fn)
     if not (ckpt_pre and ckpt_prequant):
         print("Need *_pre.pt and *_prequant.pt to draw scatter.")
         return
@@ -51,7 +57,7 @@ def main():
         bands = (mu, sigma, pi)
 
     # ---- Plot ----
-    fig = plt.figure(figsize=(8,6))
+    fig = plt.figure(figsize=(8, 6))
     plt.scatter(w0s, wTs, s=4, alpha=0.4)
     plt.xlabel("Initial w")
     plt.ylabel("Final w (pre-quant)")
@@ -60,14 +66,15 @@ def main():
     if bands is not None:
         mu, sigma, pi = bands
         x0, x1 = w0.min(), w0.max()
-        for m,s,p in zip(mu, sigma, pi):
+        for m, s, p in zip(mu, sigma, pi):
             # draw horizontal ±2σ bands centered at m
-            plt.fill_between([x0, x1], m-2*s, m+2*s, alpha=0.08)
+            plt.fill_between([x0, x1], m - 2 * s, m + 2 * s, alpha=0.08)
 
     plt.tight_layout()
     out = os.path.join(args.run_dir, "plot_scatter_w0_wT.png")
     plt.savefig(out)
     print("Saved:", out)
+
 
 if __name__ == "__main__":
     main()
