@@ -83,7 +83,7 @@ def main():
     args = ap.parse_args()
 
     # Paper defaults (good starting point for MNIST)
-    if args.paper-defaults:
+    if args.paper_defaults:
         args.init_means = "fixed"
         args.init_range_min, args.init_range_max = -0.6, 0.6
         args.init_sigma = 0.25
