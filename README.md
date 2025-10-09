@@ -46,10 +46,21 @@ python run_sws.py --dataset cifar10 --model wrn_16_4 \
   --batch-size 128 --seed 42
 ```
 
-metrics.csv (per-epoch CE/complexity/test-acc/tau, etc.)
+### Visualizations
+```bash
+# Training curves
+python scripts/plot_curves.py --run-dir runs/<your_run_dir>
 
-*_pre.pt, *_prequant.pt, *_quantized.pt
+# Mixture parameters + histogram overlay
+python scripts/plot_mixture.py --run-dir runs/<your_run_dir> --checkpoint prequant
+```
+### Ablations
+```bash
+python scripts/sweep_ablation.py \
+  --dataset mnist --model lenet_300_100 \
+  --tau-list 0.002 0.005 0.01 \
+  --pi0-list 0.99 0.999 \
+  --num-components-list 9 17 33 \
+  --retrain-epochs 100 --pretrain-epochs 20
+```
 
-report.json (compression accounting)
-
-mixture_final.json (+ optional mixture_epoch_XXX.json snapshots)
