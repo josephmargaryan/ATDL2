@@ -114,9 +114,14 @@ def retrain_soft_weight_sharing(
 ):
     """
     Retraining with soft weight-sharing.
-    IMPORTANT: We scale the complexity term so it contributes roughly once per epoch per weight:
-        comp_scaled = (-Σ_i log p(w_i)) / (num_weights * num_batches_per_epoch)
-    This prevents the complexity term from overwhelming CE on each minibatch.
+
+    KEY SCALING:
+      comp_raw = -Σ_i log p(w_i)
+      comp = comp_raw / (#weights)        <-- scale by weights ONLY (not by #batches)
+
+    This keeps CE vs. prior balanced per batch while preserving usable gradients
+    for mixture parameters (μ, σ², π). If you also divide by #batches, θ-updates
+    become too small and the mixture never moves (everything assigns to j=0).
     """
     model.to(device)
     prior.to(device)
@@ -135,10 +140,7 @@ def retrain_soft_weight_sharing(
     )
     criterion = nn.CrossEntropyLoss()
 
-    # Normalization constants for the complexity term
-    num_batches = len(train_loader)
     num_weights = sum(p.numel() for p in collect_weight_params(model))
-
     t0 = time.time()
     for ep in range(1, epochs + 1):
         model.train()
@@ -161,8 +163,8 @@ def retrain_soft_weight_sharing(
 
             # RAW complexity over all weights (not batch-dependent)
             comp_raw = prior.complexity_loss(collect_weight_params(model))
-            # Scale to per-batch contribution
-            comp = comp_raw / (num_weights * num_batches)
+            # SCALE by #weights ONLY  (critical)
+            comp = comp_raw / num_weights
 
             loss = ce + tau_eff * comp
             loss.backward()
