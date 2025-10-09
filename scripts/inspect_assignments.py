@@ -6,9 +6,9 @@ import torch
 def load_mixture(run_dir):
     with open(os.path.join(run_dir, "mixture_final.json"), "r") as f:
         mix = json.load(f)
-    mu = torch.tensor(mix["mu"], dtype=torch.float32)  # (J,)
-    sigma2 = torch.tensor(mix["sigma2"], dtype=torch.float32)  # (J,)
-    pi = torch.tensor(mix["pi"], dtype=torch.float32)  # (J,)
+    mu = torch.tensor(mix["mu"], dtype=torch.float32)
+    sigma2 = torch.tensor(mix["sigma2"], dtype=torch.float32)
+    pi = torch.tensor(mix["pi"], dtype=torch.float32)
     return mu, sigma2, pi
 
 
@@ -20,18 +20,16 @@ def find_prequant_ckpt(run_dir):
 
 
 def score_assignments(weights, mu, sigma2, pi):
-    # weights: (N,) tensor
-    w = weights.view(-1, 1)  # (N,1)
-    log_pi = torch.log(pi + 1e-8)  # (J,)
-    const = -0.5 * torch.log(2 * torch.pi * sigma2)  # (J,)
-    inv_s2 = 1.0 / sigma2  # (J,)
+    w = weights.view(-1, 1)
+    log_pi = torch.log(pi + 1e-8)
+    const = -0.5 * torch.log(2 * torch.pi * sigma2)
+    inv_s2 = 1.0 / sigma2
     scores = (
         log_pi[None, :]
         + const[None, :]
         - 0.5 * ((w - mu[None, :]) ** 2 * inv_s2[None, :])
     )
-    idx = torch.argmax(scores, dim=1)  # (N,)
-    return idx
+    return torch.argmax(scores, dim=1)
 
 
 def main():
@@ -43,8 +41,7 @@ def main():
     ckpt = find_prequant_ckpt(args.run_dir)
     sd = torch.load(ckpt, map_location="cpu")
 
-    # Global counts
-    all_w = []
+    all_idx = []
     per_tensor = []
     for k, v in sd.items():
         if not k.endswith(".weight"):
@@ -53,20 +50,15 @@ def main():
         if w.numel() == 0:
             continue
         idx = score_assignments(w, mu, sigma2, pi)
+        all_idx.append(idx)
         per_tensor.append((k, w.numel(), torch.bincount(idx, minlength=mu.numel())))
-        all_w.append(idx)
-    if not all_w:
-        print("No .weight tensors found in checkpoint.")
-        return
 
-    all_idx = torch.cat(all_w)
+    all_idx = torch.cat(all_idx)
     total = all_idx.numel()
     binc = torch.bincount(all_idx, minlength=mu.numel())
-
     print("Component assignment counts (GLOBAL):")
     for j, c in enumerate(binc.tolist()):
-        frac = 100.0 * c / max(1, total)
-        print(f"  j={j:02d}  count={c}  frac={frac:.2f}%")
+        print(f"  j={j:02d}  count={c}  frac={100*c/max(1,total):.2f}%")
     print("\nPer-tensor zero-fraction (top 10 by size):")
     per_tensor.sort(key=lambda x: x[1], reverse=True)
     for k, n, bc in per_tensor[:10]:

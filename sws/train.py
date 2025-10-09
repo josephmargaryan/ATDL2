@@ -117,11 +117,7 @@ def retrain_soft_weight_sharing(
 
     KEY SCALING:
       comp_raw = -Σ_i log p(w_i)
-      comp = comp_raw / (#weights)        <-- scale by weights ONLY (not by #batches)
-
-    This keeps CE vs. prior balanced per batch while preserving usable gradients
-    for mixture parameters (μ, σ², π). If you also divide by #batches, θ-updates
-    become too small and the mixture never moves (everything assigns to j=0).
+      comp     = comp_raw / (#weights)      <-- scale by weights ONLY (not by #batches)
     """
     model.to(device)
     prior.to(device)
@@ -145,10 +141,9 @@ def retrain_soft_weight_sharing(
     for ep in range(1, epochs + 1):
         model.train()
         running_ce = 0.0
-        running_comp_raw = 0.0  # track raw (-Σ log p(w)) per epoch
+        running_comp_raw = 0.0
         n = 0
 
-        # τ warmup
         if tau_warmup_epochs and ep <= tau_warmup_epochs:
             tau_eff = tau * (ep / tau_warmup_epochs)
         else:
@@ -161,10 +156,8 @@ def retrain_soft_weight_sharing(
             logits = model(x)
             ce = criterion(logits, y)
 
-            # RAW complexity over all weights (not batch-dependent)
             comp_raw = prior.complexity_loss(collect_weight_params(model))
-            # SCALE by #weights ONLY  (critical)
-            comp = comp_raw / num_weights
+            comp = comp_raw / num_weights  # <-- critical fix
 
             loss = ce + tau_eff * comp
             loss.backward()
@@ -180,7 +173,6 @@ def retrain_soft_weight_sharing(
         if (ep % eval_every) == 0:
             test_acc = evaluate(model, test_loader, device)
 
-        # Optional CR estimate (slow). Use sparingly.
         cr = ""
         if cr_every and (ep % cr_every) == 0:
             rep = compression_report(model, prior, dataset="", **(cr_kwargs or {}))
@@ -192,7 +184,7 @@ def retrain_soft_weight_sharing(
                     "phase": "retrain",
                     "epoch": ep,
                     "train_ce": running_ce / max(1, n),
-                    "complexity": running_comp_raw,  # raw value accumulated this epoch
+                    "complexity": running_comp_raw,
                     "total_loss": "",
                     "tau": tau_eff,
                     "test_acc": ("" if test_acc is None else f"{test_acc:.4f}"),
