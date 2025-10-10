@@ -16,13 +16,9 @@ class MixturePrior(nn.Module):
     Factorized Gaussian mixture prior over weights:
         p(w) = Π_i Σ_{j=0}^{J-1} π_j N(w_i | μ_j, σ_j^2)
 
-    j=0 is the pruning component with μ₀=0; π₀ is typically fixed close to 1.
+    j=0 is the pruning component with μ₀=0; π₀ typically fixed close to 1.
 
-    Hyper-priors (defaults mirror the authors' tutorial):
-      - Gamma over precisions λ=1/σ²:
-          zero comp:      α₀ = 5000, β₀ = 2.0
-          non-zero comps: α  =  250, β  = 0.1
-      - Beta over π₀ (unused unless learn_pi0=True).
+    NOTE (paper Table 1): the LeNet-300-100 result is reported *without* any hyper-priors.
     """
 
     def __init__(
@@ -32,12 +28,12 @@ class MixturePrior(nn.Module):
         learn_pi0: bool = False,
         init_means: torch.Tensor = None,
         init_log_sigma2: float = math.log(0.25**2),
-        # Gamma hyper-priors on precisions λ=1/σ^2 (strong by default)
-        gamma_alpha: Optional[float] = 250.0,  # non-zero comps
-        gamma_beta: Optional[float] = 0.1,
-        gamma_alpha0: Optional[float] = 5000.0,  # zero comp
-        gamma_beta0: Optional[float] = 2.0,
-        # Beta prior on π0 (optional; only if learn_pi0=True)
+        # --- Hyper-priors OFF by default to match Sec. 6.1 initial experiment ---
+        gamma_alpha: Optional[float] = None,  # non-zero comps
+        gamma_beta: Optional[float] = None,
+        gamma_alpha0: Optional[float] = None,  # zero comp
+        gamma_beta0: Optional[float] = None,
+        # Beta prior on π0 (unused unless learn_pi0=True):
         beta_alpha: Optional[float] = None,
         beta_beta: Optional[float] = None,
     ):
@@ -56,6 +52,7 @@ class MixturePrior(nn.Module):
         self.mu0 = torch.tensor(0.0)
         self.log_sigma2_0 = nn.Parameter(torch.tensor(init_log_sigma2))
 
+        # Hyper-priors (disabled by default)
         self.gamma_alpha = gamma_alpha
         self.gamma_beta = gamma_beta
         self.gamma_alpha0 = gamma_alpha0
@@ -98,6 +95,7 @@ class MixturePrior(nn.Module):
     def complexity_loss(
         self, weights: List[torch.Tensor], chunk: int = 1_000_000
     ) -> torch.Tensor:
+        # −∑ log p(w)  (+ optional hyper-priors)
         total = 0.0
         for W in weights:
             w = W.view(-1)
@@ -105,7 +103,7 @@ class MixturePrior(nn.Module):
                 part = w[start : start + chunk]
                 total = total + (-self.log_prob_w(part).sum())
 
-        # --- Gamma priors on precisions (log pdf): α log β - log Γ(α) + (α-1) log λ - β λ ---
+        # --- Gamma priors on precisions (only if provided) ---
         mu, sigma2, pi = self.mixture_params()
         lam_all = 1.0 / sigma2
         # zero component
@@ -243,5 +241,6 @@ def init_mixture(
         learn_pi0=False,
         init_means=means.to(device) if device else means,
         init_log_sigma2=math.log(init_sigma**2),
+        # hyper-priors remain None by default
     )
     return prior

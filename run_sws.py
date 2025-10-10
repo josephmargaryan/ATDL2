@@ -7,7 +7,7 @@ from sws.utils import (
     ensure_dir,
     collect_env,
     collect_weight_params,
-    CSVLogger,  # <-- add this import
+    CSVLogger,
 )
 from sws.data import make_loaders
 from sws.models import make_model
@@ -37,7 +37,11 @@ def layerwise_pruning_stats(model):
 
 def apply_preset(args):
     """
-    Paper-faithful presets (filled only if user didn't pass the flag).
+    Paper-faithful presets. For LeNet-300-100 (Sec. 6.1/Table 1):
+    * 100 retrain epochs
+    * J=17, π0≈0.999
+    * τ used with epoch semantics
+    * NO hyper-priors
     """
     if args.preset is None:
         return args
@@ -53,15 +57,16 @@ def apply_preset(args):
         set_if_missing("retrain_epochs", 100)
         set_if_missing("num_components", 17)
         set_if_missing("pi0", 0.999)
-        set_if_missing("init_means", "fixed")
-        set_if_missing("init_sigma", 0.05)
+        set_if_missing("init_means", "from_weights")
+        set_if_missing("init_sigma", 0.25)  # typical in the tutorial/paper text
         set_if_missing("merge_kl_thresh", 1e-10)
         set_if_missing("lr_w", 1e-3)
         set_if_missing("lr_theta", 5e-4)
         set_if_missing("tau", 5e-3)
-        set_if_missing("complexity_mode", "epoch")
+        set_if_missing("complexity_mode", "epoch")  # dataset-level objective
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
+        # hyper-priors: leave as defaults (None) in MixturePrior
 
     elif args.preset == "lenet5":
         set_if_missing("dataset", "mnist")
@@ -70,8 +75,8 @@ def apply_preset(args):
         set_if_missing("retrain_epochs", 100)
         set_if_missing("num_components", 17)
         set_if_missing("pi0", 0.999)
-        set_if_missing("init_means", "fixed")
-        set_if_missing("init_sigma", 0.05)
+        set_if_missing("init_means", "from_weights")
+        set_if_missing("init_sigma", 0.25)
         set_if_missing("merge_kl_thresh", 1e-10)
         set_if_missing("lr_w", 1e-3)
         set_if_missing("lr_theta", 5e-4)
@@ -121,7 +126,7 @@ def main():
     ap.add_argument(
         "--keras-scaling",
         action="store_true",
-        help="Alias for --complexity-mode keras.",
+        help="Alias for --complexity-mode keras (tutorial-style).",
     )
 
     # Pretrain
@@ -148,7 +153,7 @@ def main():
     ap.add_argument("--init-range-max", type=float, default=0.6)
     ap.add_argument("--merge-kl-thresh", type=float, default=1e-10)
 
-    # Hyper-priors (overrides; defaults are set in MixturePrior)
+    # Hyper-priors (overrides; defaults are None in MixturePrior)
     ap.add_argument("--gamma-alpha", type=float, default=None)
     ap.add_argument("--gamma-beta", type=float, default=None)
     ap.add_argument("--gamma-alpha-zero", type=float, default=None)
@@ -174,7 +179,6 @@ def main():
     if args.keras_scaling and not args.complexity_mode:
         args.complexity_mode = "keras"
 
-    # Apply paper presets (fill in only missing args)
     args = apply_preset(args)
 
     # Required fields must be set either by user or preset
@@ -245,7 +249,7 @@ def main():
         pre_acc = evaluate(model, test_loader, device)
         print(f"[No pretrain requested] test acc: {pre_acc:.4f}")
 
-    # Initialize mixture
+    # Initialize mixture  (hyper-priors remain None)
     prior: MixturePrior = init_mixture(
         model,
         J=args.num_components,
@@ -256,7 +260,7 @@ def main():
         init_sigma=args.init_sigma,
         device=device,
     )
-    # override hyper-priors if user supplied
+    # If user passed overrides, set them (remain None otherwise)
     if args.gamma_alpha is not None:
         prior.gamma_alpha = args.gamma_alpha
     if args.gamma_beta is not None:
@@ -325,7 +329,7 @@ def main():
     quant_ckpt = os.path.join(run_dir, f"{args.dataset}_{args.model}_quantized.pt")
     torch.save(model.state_dict(), quant_ckpt)
 
-    # Compression report (Han et al. CSR/Huffman)
+    # Compression report
     rep = compression_report(
         model,
         prior,
@@ -341,7 +345,7 @@ def main():
     nz_pct = 100.0 * nnz_total / max(1, total_params)
     err_pre = 1.0 - float(pre_acc)
     err_post = 1.0 - float(q_acc)
-    delta_err = (err_post - err_pre) * 100.0  # in percentage points
+    delta_err = (err_post - err_pre) * 100.0  # percentage points
 
     layer_stats = layerwise_pruning_stats(model)
     with open(os.path.join(run_dir, "layer_pruning.json"), "w") as f:
