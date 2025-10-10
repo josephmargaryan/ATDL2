@@ -7,6 +7,7 @@ from sws.utils import (
     ensure_dir,
     collect_env,
     collect_weight_params,
+    CSVLogger,  # <-- add this import
 )
 from sws.data import make_loaders
 from sws.models import make_model
@@ -52,13 +53,11 @@ def apply_preset(args):
         set_if_missing("retrain_epochs", 100)
         set_if_missing("num_components", 17)
         set_if_missing("pi0", 0.999)
-        # init per authors' snippet: fixed linspace(-0.6,0.6) and tight sigma
         set_if_missing("init_means", "fixed")
         set_if_missing("init_sigma", 0.05)
         set_if_missing("merge_kl_thresh", 1e-10)
         set_if_missing("lr_w", 1e-3)
         set_if_missing("lr_theta", 5e-4)
-        # Paper τ = 0.005; use epoch semantics to match dataset-level objective
         set_if_missing("tau", 5e-3)
         set_if_missing("complexity_mode", "epoch")
         set_if_missing("tau_warmup_epochs", 10)

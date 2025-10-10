@@ -12,13 +12,17 @@ def logsumexp(x, dim=-1):
 
 
 class MixturePrior(nn.Module):
-    """
-    ```math
-        p(w) = \prod_i \sum_{j=0}^{J-1} \pi_j \mathcal{N}(w_i | \mu_j, \sigma_j^2).
-    ```
-    Gaussian mixture prior over individual weights w_i of the network.
-    The prior is a product over weights i, each with a mixture of J Gaussians
-    (independent, identically distributed).
+    r"""
+    Factorized Gaussian mixture prior over weights:
+        p(w) = Π_i Σ_{j=0}^{J-1} π_j N(w_i | μ_j, σ_j^2)
+
+    j=0 is the pruning component with μ₀=0; π₀ is typically fixed close to 1.
+
+    Hyper-priors (defaults mirror the authors' tutorial):
+      - Gamma over precisions λ=1/σ²:
+          zero comp:      α₀ = 5000, β₀ = 2.0
+          non-zero comps: α  =  250, β  = 0.1
+      - Beta over π₀ (unused unless learn_pi0=True).
     """
 
     def __init__(
