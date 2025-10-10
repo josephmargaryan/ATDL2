@@ -37,11 +37,7 @@ def layerwise_pruning_stats(model):
 
 def apply_preset(args):
     """
-    Paper-faithful presets. For LeNet-300-100 (Sec. 6.1/Table 1):
-    * 100 retrain epochs
-    * J=17, π0≈0.999
-    * τ used with epoch semantics
-    * NO hyper-priors
+    Paper/tutorial-faithful presets.
     """
     if args.preset is None:
         return args
@@ -58,15 +54,14 @@ def apply_preset(args):
         set_if_missing("num_components", 17)
         set_if_missing("pi0", 0.999)
         set_if_missing("init_means", "from_weights")
-        set_if_missing("init_sigma", 0.25)  # typical in the tutorial/paper text
+        set_if_missing("init_sigma", 0.25)
         set_if_missing("merge_kl_thresh", 1e-10)
         set_if_missing("lr_w", 1e-3)
         set_if_missing("lr_theta", 5e-4)
         set_if_missing("tau", 5e-3)
-        set_if_missing("complexity_mode", "epoch")  # dataset-level objective
+        set_if_missing("complexity_mode", "keras")  # exact tutorial scaling
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
-        # hyper-priors: leave as defaults (None) in MixturePrior
 
     elif args.preset == "lenet5":
         set_if_missing("dataset", "mnist")
@@ -81,7 +76,7 @@ def apply_preset(args):
         set_if_missing("lr_w", 1e-3)
         set_if_missing("lr_theta", 5e-4)
         set_if_missing("tau", 5e-3)
-        set_if_missing("complexity_mode", "epoch")
+        set_if_missing("complexity_mode", "keras")
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
 
@@ -93,12 +88,12 @@ def apply_preset(args):
         set_if_missing("num_components", 64)
         set_if_missing("pi0", 0.99)
         set_if_missing("init_means", "from_weights")
-        set_if_missing("init_sigma", 0.05)
+        set_if_missing("init_sigma", 0.25)
         set_if_missing("merge_kl_thresh", 1e-10)
         set_if_missing("lr_w", 1e-3)
         set_if_missing("lr_theta", 3e-4)
         set_if_missing("tau", 5e-5)
-        set_if_missing("complexity_mode", "epoch")
+        set_if_missing("complexity_mode", "keras")
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
     else:
@@ -109,7 +104,6 @@ def apply_preset(args):
 
 def main():
     ap = argparse.ArgumentParser()
-    # Core choices
     ap.add_argument(
         "--dataset", choices=["mnist", "cifar10", "cifar100"], required=False
     )
@@ -119,14 +113,8 @@ def main():
     ap.add_argument("--batch-size", type=int, default=128)
     ap.add_argument("--num-workers", type=int, default=2)
 
-    # Presets for paper experiments
     ap.add_argument(
         "--preset", choices=["lenet_300_100", "lenet5", "wrn_16_4"], default=None
-    )
-    ap.add_argument(
-        "--keras-scaling",
-        action="store_true",
-        help="Alias for --complexity-mode keras (tutorial-style).",
     )
 
     # Pretrain
@@ -153,7 +141,7 @@ def main():
     ap.add_argument("--init-range-max", type=float, default=0.6)
     ap.add_argument("--merge-kl-thresh", type=float, default=1e-10)
 
-    # Hyper-priors (overrides; defaults are None in MixturePrior)
+    # Hyper-priors (overrides; defaults already set in MixturePrior)
     ap.add_argument("--gamma-alpha", type=float, default=None)
     ap.add_argument("--gamma-beta", type=float, default=None)
     ap.add_argument("--gamma-alpha-zero", type=float, default=None)
@@ -176,12 +164,8 @@ def main():
 
     args = ap.parse_args()
 
-    if args.keras_scaling and not args.complexity_mode:
-        args.complexity_mode = "keras"
-
     args = apply_preset(args)
 
-    # Required fields must be set either by user or preset
     assert args.dataset is not None and args.model is not None
     assert args.pretrain_epochs is not None and args.retrain_epochs is not None
     assert args.num_components is not None and args.pi0 is not None
@@ -214,7 +198,7 @@ def main():
     if args.load_pretrained and os.path.isfile(args.load_pretrained):
         model.load_state_dict(torch.load(args.load_pretrained, map_location=device))
         pre_acc = evaluate(model, test_loader, device)
-        print(f"[Loaded pretrained] test acc: {pre_acc:.4f}")
+        print(f("[Loaded pretrained] test acc: {pre_acc:.4f}"))
     elif args.pretrain_epochs > 0:
         logger = CSVLogger(
             os.path.join(run_dir, "metrics.csv"),
@@ -249,7 +233,7 @@ def main():
         pre_acc = evaluate(model, test_loader, device)
         print(f"[No pretrain requested] test acc: {pre_acc:.4f}")
 
-    # Initialize mixture  (hyper-priors remain None)
+    # Initialize mixture
     prior: MixturePrior = init_mixture(
         model,
         J=args.num_components,
@@ -260,7 +244,7 @@ def main():
         init_sigma=args.init_sigma,
         device=device,
     )
-    # If user passed overrides, set them (remain None otherwise)
+    # Optional overrides
     if args.gamma_alpha is not None:
         prior.gamma_alpha = args.gamma_alpha
     if args.gamma_beta is not None:
@@ -339,13 +323,13 @@ def main():
         pbits_conv=args.pbits_conv,
     )
 
-    # Paper-style metrics
+    # Paper-style summary
     total_params = sum(p.numel() for p in collect_weight_params(model))
     nnz_total = rep["nnz"]
     nz_pct = 100.0 * nnz_total / max(1, total_params)
     err_pre = 1.0 - float(pre_acc)
     err_post = 1.0 - float(q_acc)
-    delta_err = (err_post - err_pre) * 100.0  # percentage points
+    delta_err = (err_post - err_pre) * 100.0
 
     layer_stats = layerwise_pruning_stats(model)
     with open(os.path.join(run_dir, "layer_pruning.json"), "w") as f:

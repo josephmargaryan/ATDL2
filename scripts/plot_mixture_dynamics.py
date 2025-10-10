@@ -20,7 +20,6 @@ def main():
             mix = json.load(f)
         mu = np.array(mix["mu"])
         s = np.sqrt(np.array(mix["sigma2"]))
-        # sort by mean for consistent bands
         idx = np.argsort(mu)
         mus.append(mu[idx])
         sigmas.append(s[idx])
@@ -33,11 +32,11 @@ def main():
     for j in range(K):
         m = mus[:, j]
         s = sigmas[:, j]
-        plt.plot(xs, m, linewidth=1.0, alpha=0.8)
+        plt.plot(xs, m, linewidth=1.0, alpha=0.85)
         plt.fill_between(xs, m - 2 * s, m + 2 * s, alpha=0.08)
     plt.xlabel("epoch")
-    plt.ylabel("component mean μ (±2σ bands)")
-    plt.title("Mixture dynamics (μ and ±2σ over epochs)")
+    plt.ylabel("component mean μ (±2σ)")
+    plt.title("Mixture dynamics")
     plt.tight_layout()
     out = os.path.join(args.run_dir, "plot_mixture_dynamics.png")
     plt.savefig(out, dpi=150)

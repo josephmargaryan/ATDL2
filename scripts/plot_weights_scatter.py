@@ -19,7 +19,11 @@ def main():
     ap.add_argument(
         "--sample", type=int, default=20000, help="number of weights to scatter"
     )
+    # allow optional positional sample (backward-friendly)
+    ap.add_argument("sample_pos", nargs="?", type=int)
     args = ap.parse_args()
+    if args.sample_pos is not None:
+        args.sample = args.sample_pos
 
     # Find checkpoints
     ckpt_pre = ckpt_prequant = None
@@ -41,11 +45,10 @@ def main():
         print("No weights found.")
         return
 
-    # sample
     idx = np.random.choice(n, size=min(args.sample, n), replace=False)
     w0s, wTs = w0[idx], wT[idx]
 
-    # Mixture for bands
+    # Mixture bands (optional)
     mix_path = os.path.join(args.run_dir, "mixture_final.json")
     bands = None
     if os.path.exists(mix_path):
@@ -56,7 +59,6 @@ def main():
         pi = np.array(mix["pi"])
         bands = (mu, sigma, pi)
 
-    # ---- Plot ----
     fig = plt.figure(figsize=(8, 6))
     plt.scatter(w0s, wTs, s=4, alpha=0.4)
     plt.xlabel("Initial w")
@@ -67,7 +69,6 @@ def main():
         mu, sigma, pi = bands
         x0, x1 = w0.min(), w0.max()
         for m, s, p in zip(mu, sigma, pi):
-            # draw horizontal ±2σ bands centered at m
             plt.fill_between([x0, x1], m - 2 * s, m + 2 * s, alpha=0.08)
 
     plt.tight_layout()

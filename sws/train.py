@@ -23,7 +23,6 @@ def evaluate(model: nn.Module, loader, device) -> float:
 
 
 def _make_optimizer(model, prior, lr_w, lr_theta, weight_decay):
-    # Net weights vs mixture θ grouped, Adam like Keras
     net_params = [p for p in collect_weight_params(model) if p.requires_grad]
     theta_params = [p for p in prior.parameters() if p.requires_grad]
     return torch.optim.Adam(
@@ -119,7 +118,7 @@ def retrain_soft_weight_sharing(
     tau=5e-3,
     tau_warmup_epochs=0,
     update_all_params=False,  # kept for compat
-    complexity_mode: str = "epoch",  # {'keras','epoch'}
+    complexity_mode: str = "keras",  # {'keras','epoch'}
     logger: Optional[CSVLogger] = None,
     eval_every=1,
     cr_every=0,
@@ -128,18 +127,13 @@ def retrain_soft_weight_sharing(
     run_dir=None,
 ):
     """
-    Retraining with soft weight-sharing.
+    Loss per batch:  loss = CE + tau * comp_term
 
-    Loss per batch:
-        loss = CE + tau * comp_term
-
-    Where:
-      comp_raw = -Σ_i log p(w_i) + (hyper-priors)
-      comp_pw  = comp_raw / (#weights)           # per-weight normalization (size-invariant)
+    comp_raw = -Σ_i log p(w_i)  (+ hyper-priors), computed on CURRENT weights.
 
     complexity_mode:
-      - 'epoch': comp_term = comp_pw / #batches   (epoch ≈ CE + tau * comp_pw)  <-- paper-style
-      - 'keras': comp_term = comp_pw             (applied every batch; requires much smaller tau)
+      - 'keras': comp_term = comp_raw                 (exact tutorial semantics)
+      - 'epoch': comp_term = comp_raw / #batches      (epoch aggregate ≈ CE + tau * comp_raw)
     """
     model.to(device)
     prior.to(device)
@@ -147,14 +141,13 @@ def retrain_soft_weight_sharing(
     opt = _make_optimizer(model, prior, lr_w, lr_theta, weight_decay)
     criterion = nn.CrossEntropyLoss()
 
-    num_weights = sum(p.numel() for p in collect_weight_params(model))
     num_batches = max(1, len(train_loader))
     t0 = time.time()
 
     for ep in range(1, epochs + 1):
         model.train()
         running_ce = 0.0
-        last_comp_pw = 0.0
+        last_comp = 0.0
         n = 0
 
         if tau_warmup_epochs and ep <= tau_warmup_epochs:
@@ -169,15 +162,13 @@ def retrain_soft_weight_sharing(
             logits = model(x)
             ce = criterion(logits, y)  # mean over batch
 
-            # complexity on CURRENT weights (global, independent of batch)
             comp_raw = prior.complexity_loss(collect_weight_params(model))  # scalar
-            comp_pw = comp_raw / num_weights
-            last_comp_pw = comp_pw.item()
+            last_comp = comp_raw.item()
 
             if complexity_mode == "keras":
-                comp_term = comp_pw
+                comp_term = comp_raw
             elif complexity_mode == "epoch":
-                comp_term = comp_pw / num_batches
+                comp_term = comp_raw / num_batches
             else:
                 raise ValueError(f"Unknown complexity_mode: {complexity_mode}")
 
@@ -205,7 +196,7 @@ def retrain_soft_weight_sharing(
                     "phase": "retrain",
                     "epoch": ep,
                     "train_ce": running_ce / max(1, n),
-                    "complexity": last_comp_pw,  # per-weight scale
+                    "complexity": last_comp,
                     "total_loss": "",
                     "tau": tau_eff,
                     "test_acc": ("" if test_acc is None else f"{test_acc:.4f}"),
@@ -220,7 +211,7 @@ def retrain_soft_weight_sharing(
 
         print(
             f"[sws] ep {ep:03d}/{epochs} "
-            f"train_ce={running_ce/max(1,n):.4f} comp_pw={last_comp_pw:.3e} "
+            f"train_ce={running_ce/max(1,n):.4f} LC={last_comp:.3e} "
             f"tau={tau_eff:.4g} "
             f"{'' if test_acc is None else f'test_acc={test_acc:.4f} '} "
             f"{'' if not cr else f'CR_est={cr} '}elapsed={format_seconds(time.time()-t0)}"
