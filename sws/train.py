@@ -1,3 +1,4 @@
+# sws/train.py
 import os, json, time
 from typing import Dict
 import torch
@@ -115,9 +116,10 @@ def retrain_soft_weight_sharing(
     """
     Retraining with soft weight-sharing.
 
-    KEY SCALING:
-      comp_raw = -Σ_i log p(w_i)
-      comp     = comp_raw / (#weights)      <-- scale by weights ONLY (not by #batches)
+    Proper scaling:
+      comp_raw = -Σ_i log p(w_i)                 # sum over all weights
+      comp_pw  = comp_raw / (#weights)           # per-weight
+      Per-batch loss: ce + tau * (comp_pw / #batches_per_epoch)
     """
     model.to(device)
     prior.to(device)
@@ -137,11 +139,13 @@ def retrain_soft_weight_sharing(
     criterion = nn.CrossEntropyLoss()
 
     num_weights = sum(p.numel() for p in collect_weight_params(model))
+    num_batches = max(1, len(train_loader))  # <-- critical: scale prior per epoch
     t0 = time.time()
+
     for ep in range(1, epochs + 1):
         model.train()
         running_ce = 0.0
-        running_comp_raw = 0.0
+        running_comp_epoch = 0.0  # epoch-level complexity (same scale across epochs)
         n = 0
 
         if tau_warmup_epochs and ep <= tau_warmup_epochs:
@@ -156,16 +160,17 @@ def retrain_soft_weight_sharing(
             logits = model(x)
             ce = criterion(logits, y)
 
+            # complexity: computed on current weights, independent of batch
             comp_raw = prior.complexity_loss(collect_weight_params(model))
-            comp = comp_raw / num_weights  # <-- critical fix
+            comp_pw = comp_raw / num_weights
+            loss = ce + tau_eff * (comp_pw / num_batches)  # <-- key fix
 
-            loss = ce + tau_eff * comp
             loss.backward()
             opt.step()
 
             bs = y.size(0)
             running_ce += ce.item() * bs
-            running_comp_raw += comp_raw.item()
+            running_comp_epoch += comp_raw.item() / num_batches
             n += bs
             pbar.set_postfix(ce=f"{(running_ce/max(1,n)):.4f}", tau=f"{tau_eff:.4g}")
 
@@ -184,7 +189,7 @@ def retrain_soft_weight_sharing(
                     "phase": "retrain",
                     "epoch": ep,
                     "train_ce": running_ce / max(1, n),
-                    "complexity": running_comp_raw,
+                    "complexity": running_comp_epoch,  # epoch-level value
                     "total_loss": "",
                     "tau": tau_eff,
                     "test_acc": ("" if test_acc is None else f"{test_acc:.4f}"),
@@ -199,7 +204,7 @@ def retrain_soft_weight_sharing(
 
         print(
             f"[sws] ep {ep:03d}/{epochs} "
-            f"train_ce={running_ce/max(1,n):.4f} comp_raw={running_comp_raw:.2e} "
+            f"train_ce={running_ce/max(1,n):.4f} comp_epoch={running_comp_epoch:.2e} "
             f"tau={tau_eff:.4g} "
             f"{'' if test_acc is None else f'test_acc={test_acc:.4f} '} "
             f"{'' if not cr else f'CR_est={cr} '}elapsed={format_seconds(time.time()-t0)}"

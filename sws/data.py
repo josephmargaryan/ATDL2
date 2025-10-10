@@ -1,3 +1,4 @@
+# sws/data.py
 from typing import Tuple
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
@@ -7,13 +8,9 @@ def make_loaders(
     dataset: str, batch_size: int, num_workers: int
 ) -> Tuple[DataLoader, DataLoader, int]:
     if dataset == "mnist":
-        mean, std = (0.1307,), (0.3081,)
-        tf_train = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean, std)]
-        )
-        tf_test = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean, std)]
-        )
+        # Paper's Keras example scales to [0,1] (no mean/std normalization).
+        tf_train = transforms.ToTensor()
+        tf_test = transforms.ToTensor()
         train = datasets.MNIST(
             root="./data", train=True, download=True, transform=tf_train
         )
