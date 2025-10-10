@@ -11,8 +11,6 @@ from sws.utils import (
 )
 from sws.data import make_loaders
 from sws.models import make_model
-
-# noqa: E402
 from sws.prior import init_mixture, MixturePrior
 from sws.train import train_standard, retrain_soft_weight_sharing, evaluate
 from sws.compress import compression_report
@@ -136,10 +134,7 @@ def _auto_calibrate_tau(
         ce = torch.nn.functional.cross_entropy(logits, yb).item()
         comp_raw = prior.complexity_loss(collect_weight_params(model)).item()
     num_batches = max(1, len(train_loader))
-    if complexity_mode == "epoch":
-        denom = comp_raw / num_batches
-    else:
-        denom = comp_raw
+    denom = comp_raw if complexity_mode == "keras" else comp_raw / num_batches
     denom = max(denom, 1e-12)
     tau = (target_ratio * ce) / denom
     print(
@@ -303,7 +298,7 @@ def main():
     if args.beta_beta is not None:
         prior.beta_beta = args.beta_beta
 
-    # Decide tau
+    # Decide tau: default or auto-calibrate
     if args.tau is None:
         args.tau = _recommend_tau(args.dataset, args.complexity_mode)
         print(f"[tau] using recommended default: {args.tau:g}")

@@ -9,7 +9,7 @@ from sws.utils import CSVLogger, collect_weight_params, format_seconds
 from sws.compress import compression_report
 
 
-@torch.no_grad__()
+@torch.no_grad()
 def evaluate(model: nn.Module, loader, device) -> float:
     model.eval()
     total, correct = 0, 0
