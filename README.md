@@ -13,54 +13,64 @@ pip install -r requirements.txt
 # Choose the right Torch build if you need CUDA:
 # pip install --index-url https://download.pytorch.org/whl/cu121 torch torchvision
 ```
-
-## Quickstart
-### Quick sanity run (MNIST + LeNet-300-100; tiny epochs)
+if you are in a Google Colab, simply do:
 ```bash
-python run_sws.py --dataset mnist --model lenet_300_100 \
-  --pretrain-epochs 2 --retrain-epochs 2 --batch-size 128 --seed 42
-```
-## Reproduction-style runs
-### MNIST — LeNet-300-100
-```bash
-python run_sws.py --dataset mnist --model lenet_300_100 \
-  --pretrain-epochs 20 --lr-pre 1e-3 \
-  --retrain-epochs 100 --lr-w 1e-3 --lr-theta 5e-4 \
-  --tau 5e-3 --num-components 17 --pi0 0.999 \
-  --batch-size 128 --seed 42
-```
-### MNIST — LeNet-5
-```bash
-python run_sws.py --dataset mnist --model lenet5 \
-  --pretrain-epochs 10 --lr-pre 1e-3 \
-  --retrain-epochs 100 --lr-w 1e-3 --lr-theta 5e-4 \
-  --tau 5e-3 --num-components 17 --pi0 0.999 \
-  --batch-size 128 --seed 42
-```
-### CIFAR-10 — WRN-16-4 (light, no dropout)
-```bash
-python run_sws.py --dataset cifar10 --model wrn_16_4 \
-  --optim-pre sgd --lr-pre 0.1 --pretrain-epochs 200 \
-  --retrain-epochs 100 --lr-w 1e-3 --lr-theta 5e-4 \
-  --tau 5e-3 --num-components 17 --pi0 0.999 \
-  --batch-size 128 --seed 42
+%%capture
+!pip install --upgrade pip
+!git clone https://github.com/josephmargaryan/ATDL2.git
+%cd ATDL2
+!pip install -e . --no-deps
 ```
 
-### Visualizations
+# Full reproduction protocol
+## Member 1 - LeNet‑300‑100 (MNIST)
 ```bash
-# Training curves
-python scripts/plot_curves.py --run-dir runs/<your_run_dir>
-
-# Mixture parameters + histogram overlay
-python scripts/plot_mixture.py --run-dir runs/<your_run_dir> --checkpoint prequant
-```
-### Ablations
-```bash
-python scripts/sweep_ablation.py \
-  --dataset mnist --model lenet_300_100 \
-  --tau-list 0.002 0.005 0.01 \
-  --pi0-list 0.99 0.999 \
-  --num-components-list 9 17 33 \
-  --retrain-epochs 100 --pretrain-epochs 20
+python run_sws.py --preset lenet_300_100 \
+  --run-name paper_lenet300100_seed1 --save-dir runs --seed 1
 ```
 
+### Figure‑style plots (optional):
+```bash
+# mixture dynamics (Fig. 3 left)
+python scripts/plot_mixture_dynamics.py --run-dir runs/paper_lenet300100_seed1
+# weight movement (Fig. 3 right)
+python scripts/plot_weights_scatter.py --run-dir runs/paper_lenet300100_seed1 --sample 20000
+```
+
+## Member 2 — LeNet‑5‑Caffe (MNIST)
+```bash
+python run_sws.py --preset lenet5 \
+  --run-name paper_lenet5_seed1 --save-dir runs --seed 1
+```
+### Filter grids & mixture dynamics:
+```bash
+python scripts/plot_filters.py --run-dir runs/paper_lenet5_seed1 --checkpoint pre
+python scripts/plot_filters.py --run-dir runs/paper_lenet5_seed1 --checkpoint quantized
+python scripts/plot_mixture_dynamics.py --run-dir runs/paper_lenet5_seed1
+python scripts/plot_weights_scatter.py --run-dir runs/paper_lenet5_seed1 --sample 20000
+```
+## Member 3 — “ResNet (light)” = WRN‑16‑4 (CIFAR‑10)
+```bash
+python run_sws.py --preset wrn_16_4 \
+  --run-name paper_wrn16x4_seed1 --save-dir runs --seed 1
+```
+### Optional sweep to recreate the Pareto cloud (Fig. 2):
+```bash
+# run your existing sweep (adjust ranges as you like)
+python scripts/sweep_ablation.py --dataset mnist --model lenet_300_100 \
+  --pretrain-epochs 20 --retrain-epochs 40 \
+  --tau-list 8e-5 1e-4 1.5e-4 2e-4 3e-4 \
+  --pi0-list 0.995 0.999 \
+  --num-components-list 13 17 21 \
+  --save-dir runs_sweep
+
+# then plot $\Delta$ vs CR
+python scripts/plot_pareto.py --csv runs_sweep/sweep_mnist_lenet_300_100.csv --root runs
+```
+
+
+After every run, you can check the pre-quantized weights:
+```bash
+# Assignments on the *pre-quantized* weights
+python scripts/inspect_assignments.py --run-dir <RUN_DIR>
+```
