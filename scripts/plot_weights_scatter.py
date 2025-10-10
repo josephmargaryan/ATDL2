@@ -1,5 +1,5 @@
 # scripts/plot_weights_scatter.py
-import os, argparse, json, random
+import os, argparse, json
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -19,8 +19,7 @@ def main():
     ap.add_argument(
         "--sample", type=int, default=20000, help="number of weights to scatter"
     )
-    # allow optional positional sample (backward-friendly)
-    ap.add_argument("sample_pos", nargs="?", type=int)
+    ap.add_argument("sample_pos", nargs="?", type=int)  # optional positional
     args = ap.parse_args()
     if args.sample_pos is not None:
         args.sample = args.sample_pos

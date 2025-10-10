@@ -9,7 +9,7 @@ from sws.utils import CSVLogger, collect_weight_params, format_seconds
 from sws.compress import compression_report
 
 
-@torch.no_grad()
+@torch.no_grad__()
 def evaluate(model: nn.Module, loader, device) -> float:
     model.eval()
     total, correct = 0, 0
@@ -23,6 +23,7 @@ def evaluate(model: nn.Module, loader, device) -> float:
 
 
 def _make_optimizer(model, prior, lr_w, lr_theta, weight_decay):
+    # Train weights and mixture θ in two param groups (Adam like the tutorial)
     net_params = [p for p in collect_weight_params(model) if p.requires_grad]
     theta_params = [p for p in prior.parameters() if p.requires_grad]
     return torch.optim.Adam(
@@ -118,7 +119,7 @@ def retrain_soft_weight_sharing(
     tau=5e-3,
     tau_warmup_epochs=0,
     update_all_params=False,  # kept for compat
-    complexity_mode: str = "keras",  # {'keras','epoch'}
+    complexity_mode: str = "epoch",  # {'keras','epoch'}
     logger: Optional[CSVLogger] = None,
     eval_every=1,
     cr_every=0,
@@ -129,11 +130,13 @@ def retrain_soft_weight_sharing(
     """
     Loss per batch:  loss = CE + tau * comp_term
 
-    comp_raw = -Σ_i log p(w_i)  (+ hyper-priors), computed on CURRENT weights.
+    comp_raw = -Σ_i log p(w_i) (+ hyper-priors), computed on CURRENT weights.
 
     complexity_mode:
-      - 'keras': comp_term = comp_raw                 (exact tutorial semantics)
+      - 'keras': comp_term = comp_raw                 (tutorial semantics)
       - 'epoch': comp_term = comp_raw / #batches      (epoch aggregate ≈ CE + tau * comp_raw)
+
+    We also dump mixture parameters at 'epoch 0' so plotting always works.
     """
     model.to(device)
     prior.to(device)
@@ -144,7 +147,7 @@ def retrain_soft_weight_sharing(
     num_batches = max(1, len(train_loader))
     t0 = time.time()
 
-    # ---- Snapshot mixture at "epoch 0" so plotting always works
+    # ---- Snapshot mixture at "epoch 0"
     if mixture_every and run_dir:
         with open(os.path.join(run_dir, f"mixture_epoch_{0:03d}.json"), "w") as f:
             json.dump(prior.snapshot(), f, indent=2)
@@ -210,7 +213,7 @@ def retrain_soft_weight_sharing(
                 }
             )
 
-        # ---- Always log mixture when mixture_every==1 (and on multiples otherwise)
+        # ---- Log mixture (every epoch when mixture_every==1)
         if mixture_every and run_dir and ((ep % mixture_every) == 0):
             with open(os.path.join(run_dir, f"mixture_epoch_{ep:03d}.json"), "w") as f:
                 json.dump(prior.snapshot(), f, indent=2)

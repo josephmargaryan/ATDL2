@@ -11,6 +11,8 @@ from sws.utils import (
 )
 from sws.data import make_loaders
 from sws.models import make_model
+
+# noqa: E402
 from sws.prior import init_mixture, MixturePrior
 from sws.train import train_standard, retrain_soft_weight_sharing, evaluate
 from sws.compress import compression_report
@@ -19,7 +21,9 @@ from sws.compress import compression_report
 def layerwise_pruning_stats(model):
     stats = []
     for name, m in model.named_modules():
-        if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d)):
+        import torch.nn as nn
+
+        if isinstance(m, (nn.Linear, nn.Conv2d)):
             W = m.weight.data
             total = W.numel()
             nnz = int((W != 0).sum().item())
@@ -37,7 +41,8 @@ def layerwise_pruning_stats(model):
 
 def apply_preset(args):
     """
-    Paper/tutorial-faithful presets.
+    Paper/tutorial-faithful presets; τ is set later based on complexity_mode+dataset
+    unless the user overrides it explicitly.
     """
     if args.preset is None:
         return args
@@ -58,8 +63,7 @@ def apply_preset(args):
         set_if_missing("merge_kl_thresh", 1e-10)
         set_if_missing("lr_w", 1e-3)
         set_if_missing("lr_theta", 5e-4)
-        set_if_missing("tau", 5e-3)
-        set_if_missing("complexity_mode", "keras")  # exact tutorial scaling
+        set_if_missing("complexity_mode", "epoch")
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
 
@@ -75,8 +79,7 @@ def apply_preset(args):
         set_if_missing("merge_kl_thresh", 1e-10)
         set_if_missing("lr_w", 1e-3)
         set_if_missing("lr_theta", 5e-4)
-        set_if_missing("tau", 5e-3)
-        set_if_missing("complexity_mode", "keras")
+        set_if_missing("complexity_mode", "epoch")
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
 
@@ -92,14 +95,58 @@ def apply_preset(args):
         set_if_missing("merge_kl_thresh", 1e-10)
         set_if_missing("lr_w", 1e-3)
         set_if_missing("lr_theta", 3e-4)
-        set_if_missing("tau", 5e-5)
-        set_if_missing("complexity_mode", "keras")
+        set_if_missing("complexity_mode", "epoch")
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
     else:
         raise ValueError(f"Unknown preset: {args.preset}")
 
     return args
+
+
+def _recommend_tau(dataset: str, complexity_mode: str) -> float:
+    """
+    Safe conservative defaults: small enough to avoid collapse on first try.
+    """
+    if complexity_mode == "keras":
+        return {"mnist": 1e-6, "cifar10": 5e-6, "cifar100": 1e-5}.get(dataset, 1e-6)
+    else:
+        return {"mnist": 1e-5, "cifar10": 5e-6, "cifar100": 1e-5}.get(dataset, 1e-5)
+
+
+def _auto_calibrate_tau(
+    model,
+    prior,
+    train_loader,
+    device,
+    complexity_mode: str,
+    target_ratio: float = 0.1,
+) -> float:
+    """
+    Choose tau so that (tau * comp_term) ≈ target_ratio * CE on a single batch.
+
+    comp_term = comp_raw            if mode == 'keras'
+              = comp_raw / #batches if mode == 'epoch'
+    """
+    model.eval()
+    xb, yb = next(iter(train_loader))
+    xb, yb = xb.to(device), yb.to(device)
+    with torch.no_grad():
+        logits = model(xb)
+        ce = torch.nn.functional.cross_entropy(logits, yb).item()
+        comp_raw = prior.complexity_loss(collect_weight_params(model)).item()
+    num_batches = max(1, len(train_loader))
+    if complexity_mode == "epoch":
+        denom = comp_raw / num_batches
+    else:
+        denom = comp_raw
+    denom = max(denom, 1e-12)
+    tau = (target_ratio * ce) / denom
+    print(
+        f"[auto-tau] ce≈{ce:.4g}, comp_raw≈{comp_raw:.4g}, mode={complexity_mode}, "
+        f"#batches={num_batches}, tau→{tau:.4g} (target_ratio={target_ratio})"
+    )
+    return tau
 
 
 def main():
@@ -131,6 +178,12 @@ def main():
     ap.add_argument("--tau", type=float, default=None)
     ap.add_argument("--tau-warmup-epochs", type=int, default=10)
     ap.add_argument("--complexity-mode", choices=["keras", "epoch"], default=None)
+    ap.add_argument(
+        "--auto-tau-ratio",
+        type=float,
+        default=0.0,
+        help="If >0, auto-calibrate tau so that tau*comp ≈ ratio*CE on one batch.",
+    )
 
     # Mixture init
     ap.add_argument("--num-components", type=int, default=None)
@@ -141,7 +194,7 @@ def main():
     ap.add_argument("--init-range-max", type=float, default=0.6)
     ap.add_argument("--merge-kl-thresh", type=float, default=1e-10)
 
-    # Hyper-priors (overrides; defaults already set in MixturePrior)
+    # Hyper-priors overrides (defaults already in MixturePrior)
     ap.add_argument("--gamma-alpha", type=float, default=None)
     ap.add_argument("--gamma-beta", type=float, default=None)
     ap.add_argument("--gamma-alpha-zero", type=float, default=None)
@@ -163,15 +216,7 @@ def main():
     ap.add_argument("--pbits-conv", type=int, default=8)
 
     args = ap.parse_args()
-
     args = apply_preset(args)
-
-    assert args.dataset is not None and args.model is not None
-    assert args.pretrain_epochs is not None and args.retrain_epochs is not None
-    assert args.num_components is not None and args.pi0 is not None
-    assert args.lr_w is not None and args.lr_theta is not None
-    assert args.tau is not None and args.complexity_mode is not None
-    assert args.init_means is not None and args.init_sigma is not None
 
     set_seed(args.seed)
     device = get_device()
@@ -198,7 +243,7 @@ def main():
     if args.load_pretrained and os.path.isfile(args.load_pretrained):
         model.load_state_dict(torch.load(args.load_pretrained, map_location=device))
         pre_acc = evaluate(model, test_loader, device)
-        print(f("[Loaded pretrained] test acc: {pre_acc:.4f}"))
+        print(f"[Loaded pretrained] test acc: {pre_acc:.4f}")
     elif args.pretrain_epochs > 0:
         logger = CSVLogger(
             os.path.join(run_dir, "metrics.csv"),
@@ -257,6 +302,20 @@ def main():
         prior.beta_alpha = args.beta_alpha
     if args.beta_beta is not None:
         prior.beta_beta = args.beta_beta
+
+    # Decide tau
+    if args.tau is None:
+        args.tau = _recommend_tau(args.dataset, args.complexity_mode)
+        print(f"[tau] using recommended default: {args.tau:g}")
+    if args.auto_tau_ratio and args.auto_tau_ratio > 0:
+        args.tau = _auto_calibrate_tau(
+            model,
+            prior,
+            train_loader,
+            device,
+            complexity_mode=args.complexity_mode,
+            target_ratio=args.auto_tau_ratio,
+        )
 
     # Retrain with soft weight-sharing
     logger = CSVLogger(

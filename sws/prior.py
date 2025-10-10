@@ -18,8 +18,8 @@ class MixturePrior(nn.Module):
 
     j=0 is the pruning component with μ₀=0; π₀ is fixed close to 1.
 
-    Defaults match the original tutorial layer:
-      - init σ ≈ 0.25 for all components
+    Defaults match the tutorial layer from the original authors:
+      - init σ ≈ 0.25
       - Gamma priors on precisions (different for zero vs non-zero)
     """
 
@@ -243,6 +243,5 @@ def init_mixture(
         learn_pi0=False,
         init_means=means.to(device) if device else means,
         init_log_sigma2=math.log(init_sigma**2),
-        # (Gamma priors enabled by default)
     )
     return prior
