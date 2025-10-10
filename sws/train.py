@@ -144,6 +144,11 @@ def retrain_soft_weight_sharing(
     num_batches = max(1, len(train_loader))
     t0 = time.time()
 
+    # ---- Snapshot mixture at "epoch 0" so plotting always works
+    if mixture_every and run_dir:
+        with open(os.path.join(run_dir, f"mixture_epoch_{0:03d}.json"), "w") as f:
+            json.dump(prior.snapshot(), f, indent=2)
+
     for ep in range(1, epochs + 1):
         model.train()
         running_ce = 0.0
@@ -205,7 +210,8 @@ def retrain_soft_weight_sharing(
                 }
             )
 
-        if mixture_every and run_dir and (ep % mixture_every == 0):
+        # ---- Always log mixture when mixture_every==1 (and on multiples otherwise)
+        if mixture_every and run_dir and ((ep % mixture_every) == 0):
             with open(os.path.join(run_dir, f"mixture_epoch_{ep:03d}.json"), "w") as f:
                 json.dump(prior.snapshot(), f, indent=2)
 
