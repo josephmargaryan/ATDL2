@@ -13,12 +13,12 @@ def logsumexp(x, dim=-1):
 
 class MixturePrior(nn.Module):
     """
-    p(w) = Π_i Σ_{j=0}^{J-1} π_j N(w_i | μ_j, σ_j^2).
-    j=0 is the pruning component with μ0=0; π0 typically fixed ≈1.
-    For j>=1, (μ, σ, π) are learned (empirical Bayes).
-    Optional hyper-priors:
-      - Gamma over precisions λ=1/σ^2, separate for zero vs nonzero components.
-      - Beta over π0 (if learnable).
+    ```math
+        p(w) = \prod_i \sum_{j=0}^{J-1} \pi_j \mathcal{N}(w_i | \mu_j, \sigma_j^2).
+    ```
+    Gaussian mixture prior over individual weights w_i of the network.
+    The prior is a product over weights i, each with a mixture of J Gaussians
+    (independent, identically distributed).
     """
 
     def __init__(
@@ -28,12 +28,12 @@ class MixturePrior(nn.Module):
         learn_pi0: bool = False,
         init_means: torch.Tensor = None,
         init_log_sigma2: float = math.log(0.25**2),
-        # Gamma hyper-priors on precisions:
-        gamma_alpha: Optional[float] = None,
-        gamma_beta: Optional[float] = None,  # non-zero comps
-        gamma_alpha0: Optional[float] = None,
-        gamma_beta0: Optional[float] = None,  # zero comp
-        # Beta prior on π0:
+        # Gamma hyper-priors on precisions λ=1/σ^2 (strong by default)
+        gamma_alpha: Optional[float] = 250.0,  # non-zero comps
+        gamma_beta: Optional[float] = 0.1,
+        gamma_alpha0: Optional[float] = 5000.0,  # zero comp
+        gamma_beta0: Optional[float] = 2.0,
+        # Beta prior on π0 (optional; only if learn_pi0=True)
         beta_alpha: Optional[float] = None,
         beta_beta: Optional[float] = None,
     ):
@@ -101,7 +101,7 @@ class MixturePrior(nn.Module):
                 part = w[start : start + chunk]
                 total = total + (-self.log_prob_w(part).sum())
 
-        # --- Gamma priors on precisions (log pdf): α log β - log Γ(α) + (α-1) log λ - β λ  ---
+        # --- Gamma priors on precisions (log pdf): α log β - log Γ(α) + (α-1) log λ - β λ ---
         mu, sigma2, pi = self.mixture_params()
         lam_all = 1.0 / sigma2
         # zero component
@@ -233,10 +233,11 @@ def init_mixture(
         means = torch.linspace(wmin, wmax, steps=J - 1)
     else:
         means = torch.linspace(init_range_min, init_range_max, steps=J - 1)
-    return MixturePrior(
+    prior = MixturePrior(
         J=J,
         pi0=pi0,
         learn_pi0=False,
         init_means=means.to(device) if device else means,
         init_log_sigma2=math.log(init_sigma**2),
     )
+    return prior

@@ -34,68 +34,126 @@ def layerwise_pruning_stats(model):
     return stats
 
 
+def apply_preset(args):
+    """
+    Paper-faithful presets (filled only if user didn't pass the flag).
+    """
+    if args.preset is None:
+        return args
+
+    def set_if_missing(name, value):
+        if getattr(args, name) is None:
+            setattr(args, name, value)
+
+    if args.preset == "lenet_300_100":
+        set_if_missing("dataset", "mnist")
+        set_if_missing("model", "lenet_300_100")
+        set_if_missing("pretrain_epochs", 20)
+        set_if_missing("retrain_epochs", 100)
+        set_if_missing("num_components", 17)
+        set_if_missing("pi0", 0.999)
+        # init per authors' snippet: fixed linspace(-0.6,0.6) and tight sigma
+        set_if_missing("init_means", "fixed")
+        set_if_missing("init_sigma", 0.05)
+        set_if_missing("merge_kl_thresh", 1e-10)
+        set_if_missing("lr_w", 1e-3)
+        set_if_missing("lr_theta", 5e-4)
+        # Paper τ = 0.005; use epoch semantics to match dataset-level objective
+        set_if_missing("tau", 5e-3)
+        set_if_missing("complexity_mode", "epoch")
+        set_if_missing("tau_warmup_epochs", 10)
+        set_if_missing("log_mixture_every", 1)
+
+    elif args.preset == "lenet5":
+        set_if_missing("dataset", "mnist")
+        set_if_missing("model", "lenet5")
+        set_if_missing("pretrain_epochs", 20)
+        set_if_missing("retrain_epochs", 100)
+        set_if_missing("num_components", 17)
+        set_if_missing("pi0", 0.999)
+        set_if_missing("init_means", "fixed")
+        set_if_missing("init_sigma", 0.05)
+        set_if_missing("merge_kl_thresh", 1e-10)
+        set_if_missing("lr_w", 1e-3)
+        set_if_missing("lr_theta", 5e-4)
+        set_if_missing("tau", 5e-3)
+        set_if_missing("complexity_mode", "epoch")
+        set_if_missing("tau_warmup_epochs", 10)
+        set_if_missing("log_mixture_every", 1)
+
+    elif args.preset == "wrn_16_4":
+        set_if_missing("dataset", "cifar10")
+        set_if_missing("model", "wrn_16_4")
+        set_if_missing("pretrain_epochs", 160)
+        set_if_missing("retrain_epochs", 40)
+        set_if_missing("num_components", 64)
+        set_if_missing("pi0", 0.99)
+        set_if_missing("init_means", "from_weights")
+        set_if_missing("init_sigma", 0.05)
+        set_if_missing("merge_kl_thresh", 1e-10)
+        set_if_missing("lr_w", 1e-3)
+        set_if_missing("lr_theta", 3e-4)
+        set_if_missing("tau", 5e-5)
+        set_if_missing("complexity_mode", "epoch")
+        set_if_missing("tau_warmup_epochs", 10)
+        set_if_missing("log_mixture_every", 1)
+    else:
+        raise ValueError(f"Unknown preset: {args.preset}")
+
+    return args
+
+
 def main():
     ap = argparse.ArgumentParser()
+    # Core choices
     ap.add_argument(
-        "--dataset", choices=["mnist", "cifar10", "cifar100"], required=True
+        "--dataset", choices=["mnist", "cifar10", "cifar100"], required=False
     )
     ap.add_argument(
-        "--model", choices=["lenet_300_100", "lenet5", "wrn_16_4"], required=True
+        "--model", choices=["lenet_300_100", "lenet5", "wrn_16_4"], required=False
     )
     ap.add_argument("--batch-size", type=int, default=128)
     ap.add_argument("--num-workers", type=int, default=2)
 
+    # Presets for paper experiments
+    ap.add_argument(
+        "--preset", choices=["lenet_300_100", "lenet5", "wrn_16_4"], default=None
+    )
+    ap.add_argument(
+        "--keras-scaling",
+        action="store_true",
+        help="Alias for --complexity-mode keras.",
+    )
+
     # Pretrain
-    ap.add_argument("--pretrain-epochs", type=int, default=0)
+    ap.add_argument("--pretrain-epochs", type=int, default=None)
     ap.add_argument("--lr-pre", type=float, default=1e-3)
     ap.add_argument("--optim-pre", choices=["adam", "sgd"], default="adam")
     ap.add_argument("--load-pretrained", type=str, default=None)
 
     # Retrain (SWS)
-    ap.add_argument("--retrain-epochs", type=int, default=100)
-    ap.add_argument("--lr-w", type=float, default=1e-3)
-    ap.add_argument("--lr-theta", type=float, default=5e-4)
+    ap.add_argument("--retrain-epochs", type=int, default=None)
+    ap.add_argument("--lr-w", type=float, default=None)
+    ap.add_argument("--lr-theta", type=float, default=None)
     ap.add_argument("--weight-decay", type=float, default=0.0)
-    ap.add_argument("--tau", type=float, default=5e-3)
-    ap.add_argument("--tau-warmup-epochs", type=int, default=0)
-    ap.add_argument("--update-all-params", action="store_true")
+    ap.add_argument("--tau", type=float, default=None)
+    ap.add_argument("--tau-warmup-epochs", type=int, default=10)
+    ap.add_argument("--complexity-mode", choices=["keras", "epoch"], default=None)
 
     # Mixture init
-    ap.add_argument("--num-components", type=int, default=17)
-    ap.add_argument("--pi0", type=float, default=0.999)
-    ap.add_argument("--init-sigma", type=float, default=0.25)
-    ap.add_argument(
-        "--init-means", choices=["from_weights", "fixed"], default="from_weights"
-    )
+    ap.add_argument("--num-components", type=int, default=None)
+    ap.add_argument("--pi0", type=float, default=None)
+    ap.add_argument("--init-sigma", type=float, default=None)
+    ap.add_argument("--init-means", choices=["from_weights", "fixed"], default=None)
     ap.add_argument("--init-range-min", type=float, default=-0.6)
     ap.add_argument("--init-range-max", type=float, default=0.6)
     ap.add_argument("--merge-kl-thresh", type=float, default=1e-10)
 
-    # Hyper-priors
-    ap.add_argument(
-        "--gamma-alpha",
-        type=float,
-        default=None,
-        help="Gamma prior α for non-zero comps",
-    )
-    ap.add_argument(
-        "--gamma-beta",
-        type=float,
-        default=None,
-        help="Gamma prior β for non-zero comps",
-    )
-    ap.add_argument(
-        "--gamma-alpha-zero",
-        type=float,
-        default=None,
-        help="Gamma prior α for zero comp",
-    )
-    ap.add_argument(
-        "--gamma-beta-zero",
-        type=float,
-        default=None,
-        help="Gamma prior β for zero comp",
-    )
+    # Hyper-priors (overrides; defaults are set in MixturePrior)
+    ap.add_argument("--gamma-alpha", type=float, default=None)
+    ap.add_argument("--gamma-beta", type=float, default=None)
+    ap.add_argument("--gamma-alpha-zero", type=float, default=None)
+    ap.add_argument("--gamma-beta-zero", type=float, default=None)
     ap.add_argument("--beta-alpha", type=float, default=None)
     ap.add_argument("--beta-beta", type=float, default=None)
 
@@ -112,35 +170,21 @@ def main():
     ap.add_argument("--pbits-fc", type=int, default=5)
     ap.add_argument("--pbits-conv", type=int, default=8)
 
-    # One-shot paper alignment
-    ap.add_argument(
-        "--paper-defaults",
-        action="store_true",
-        help="Use initialization and priors as in the paper/tutorial (μ in [-0.6,0.6], σ≈0.25, gamma priors, merge KL≈1e-10, τ-warmup=10).",
-    )
-
     args = ap.parse_args()
 
-    # Paper defaults (good starting point for MNIST)
-    if args.paper_defaults:
-        # init from pretrained range (Sec. 4.2)
-        args.init_means = "from_weights"
-        args.init_sigma = 0.05
-        # keep τ, add a gentle warm-up
-        args.tau = 5e-3
-        if args.tau_warmup_epochs == 0:
-            args.tau_warmup_epochs = 10
-        # Gamma priors: mode (α-1)/β ≈ 400  (Appendix B)
-        if args.gamma_alpha is None:
-            args.gamma_alpha = 401.0
-        if args.gamma_beta is None:
-            args.gamma_beta = 1.0
-        if args.gamma_alpha_zero is None:
-            args.gamma_alpha_zero = 401.0
-        if args.gamma_beta_zero is None:
-            args.gamma_beta_zero = 1.0
-        # strict merge threshold (Eq. 8 / text)
-        args.merge_kl_thresh = 1e-10
+    if args.keras_scaling and not args.complexity_mode:
+        args.complexity_mode = "keras"
+
+    # Apply paper presets (fill in only missing args)
+    args = apply_preset(args)
+
+    # Required fields must be set either by user or preset
+    assert args.dataset is not None and args.model is not None
+    assert args.pretrain_epochs is not None and args.retrain_epochs is not None
+    assert args.num_components is not None and args.pi0 is not None
+    assert args.lr_w is not None and args.lr_theta is not None
+    assert args.tau is not None and args.complexity_mode is not None
+    assert args.init_means is not None and args.init_sigma is not None
 
     set_seed(args.seed)
     device = get_device()
@@ -149,7 +193,7 @@ def main():
         args.run_name or f"{args.dataset}_{args.model}_{time.strftime('%Y%m%d_%H%M%S')}"
     )
     run_dir = os.path.join(args.save_dir, run_name)
-    ensure_dir(run_dir)
+    os.makedirs(run_dir, exist_ok=True)
 
     with open(os.path.join(run_dir, "config.json"), "w") as f:
         json.dump(vars(args), f, indent=2)
@@ -169,8 +213,6 @@ def main():
         pre_acc = evaluate(model, test_loader, device)
         print(f"[Loaded pretrained] test acc: {pre_acc:.4f}")
     elif args.pretrain_epochs > 0:
-        from sws.utils import CSVLogger
-
         logger = CSVLogger(
             os.path.join(run_dir, "metrics.csv"),
             header=[
@@ -215,17 +257,21 @@ def main():
         init_sigma=args.init_sigma,
         device=device,
     )
-    # set hyper-priors
-    prior.gamma_alpha = args.gamma_alpha
-    prior.gamma_beta = args.gamma_beta
-    prior.gamma_alpha0 = args.gamma_alpha_zero
-    prior.gamma_beta0 = args.gamma_beta_zero
-    prior.beta_alpha = args.beta_alpha
-    prior.beta_beta = args.beta_beta
+    # override hyper-priors if user supplied
+    if args.gamma_alpha is not None:
+        prior.gamma_alpha = args.gamma_alpha
+    if args.gamma_beta is not None:
+        prior.gamma_beta = args.gamma_beta
+    if args.gamma_alpha_zero is not None:
+        prior.gamma_alpha0 = args.gamma_alpha_zero
+    if args.gamma_beta_zero is not None:
+        prior.gamma_beta0 = args.gamma_beta_zero
+    if args.beta_alpha is not None:
+        prior.beta_alpha = args.beta_alpha
+    if args.beta_beta is not None:
+        prior.beta_beta = args.beta_beta
 
     # Retrain with soft weight-sharing
-    from sws.utils import CSVLogger
-
     logger = CSVLogger(
         os.path.join(run_dir, "metrics.csv"),
         header=[
@@ -252,7 +298,7 @@ def main():
         weight_decay=args.weight_decay,
         tau=args.tau,
         tau_warmup_epochs=args.tau_warmup_epochs,
-        update_all_params=args.update_all_params,
+        complexity_mode=args.complexity_mode,
         logger=logger,
         eval_every=args.eval_every,
         cr_every=args.cr_every,
