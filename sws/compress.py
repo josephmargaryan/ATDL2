@@ -1,7 +1,8 @@
+# sws/compress.py
 import math, collections
 from typing import Dict, Tuple
 import torch
-from sws.utils import flatten_conv_to_2d, collect_weight_params
+from sws.utils import flatten_conv_to_2d
 
 
 def _shannon_bits(counts: Dict[int, int]) -> float:
@@ -24,6 +25,9 @@ def _csr_bits_for_layer(
     pbits_conv: int = 8,
     use_huffman: bool = True,
 ) -> Tuple[int, int, int, int, int]:
+    """
+    Returns (bits_IR, bits_IC, bits_A, bits_codebook, nnz)
+    """
     W = W2d.detach().cpu().numpy()
     comp = comp_ids.detach().cpu().numpy()
 
@@ -40,9 +44,11 @@ def _csr_bits_for_layer(
 
     nnz = len(nonzeros)
 
+    # IR: row pointer deltas (store counts); simple fixed-bit budget
     p_ir = max(1, int(math.ceil(math.log2(max(nnz, 1) + 1))))
     bits_IR = (rows + 1) * p_ir
 
+    # IC: relative column indices with p-bit buckets and padding spans
     pbits = pbits_conv if is_conv else pbits_fc
     span = (1 << pbits) - 1
     ic_diffs = []
@@ -68,6 +74,7 @@ def _csr_bits_for_layer(
     else:
         bits_IC = len(ic_diffs) * pbits
 
+    # A: Huffman on non-zero codebook indices (or fixed-log2 J)
     nz_vals = [z for z in padded_nonzeros if z != 0]
     if use_huffman:
         countsA = collections.Counter(nz_vals)
@@ -75,6 +82,7 @@ def _csr_bits_for_layer(
     else:
         bits_A = len(nz_vals) * int(math.ceil(math.log2(max(2, J))))
 
+    # Codebook (store J-1 means as 32-bit floats)
     bits_codebook = (J - 1) * 32
     return bits_IR, bits_IC, bits_A, bits_codebook, nnz
 
@@ -87,22 +95,59 @@ def compression_report(
     use_huffman: bool = True,
     pbits_fc: int = 5,
     pbits_conv: int = 8,
+    skip_last_matrix: bool = False,
 ) -> Dict:
+    """
+    Compute Han-style CSR bit cost using mixture assignments for all layers,
+    except (optionally) the last 2D weight, which can be treated as 32-bit
+    passthrough (uncompressed) to preserve accuracy on small datasets.
+
+    Returns a dict with total bits, CR, nnz and per-layer details.
+    """
     mu, sigma2, pi = prior.mixture_params()
     device = mu.device
     log_pi = torch.log(pi + 1e-8)
     const = -0.5 * torch.log(2 * math.pi * sigma2)
     inv_s2 = 1.0 / sigma2
+
     total_orig_bits = 0
     total_bits_IR = total_bits_IC = total_bits_A = total_codebook = 0
+    passthrough_bits = 0
     total_nnz = 0
     layers = []
 
+    # Collect compressible layers in a deterministic order
+    layers_mod = []
     for m in model.modules():
-        if not isinstance(m, (torch.nn.Linear, torch.nn.Conv2d)):
-            continue
+        if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d)):
+            layers_mod.append(m)
+    last2d = len(layers_mod) - 1 if layers_mod else -1
+
+    for li, m in enumerate(layers_mod):
         W = m.weight.data
         total_orig_bits += W.numel() * 32
+
+        # If skipping the last matrix, count it as dense 32-bit passthrough
+        if skip_last_matrix and li == last2d:
+            nnz = int((W != 0).sum().item())  # dense store; count true nonzeros
+            passthrough_bits += W.numel() * 32
+            total_nnz += nnz
+            layers.append(
+                {
+                    "layer": m.__class__.__name__,
+                    "shape": list(W.shape),
+                    "orig_bits": W.numel() * 32,
+                    "bits_IR": 0,
+                    "bits_IC": 0,
+                    "bits_A": 0,
+                    "bits_codebook": 0,
+                    "nnz": nnz,
+                    "passthrough": True,
+                }
+            )
+            continue
+
+        # Mixture assignment (which codebook index each parameter snaps to)
         w = W.view(-1, 1)
         scores = (
             log_pi.unsqueeze(0)
@@ -112,6 +157,8 @@ def compression_report(
         idx = torch.argmax(scores, dim=1)
         comp_ids = idx.view_as(W)
         comp_ids = torch.where(comp_ids > 0, comp_ids, torch.tensor(0, device=device))
+
+        # CSR cost on flattened 2D view
         W2d = flatten_conv_to_2d(W)
         comp2d = flatten_conv_to_2d(comp_ids)
         bits_IR, bits_IC, bits_A, bits_codebook, nnz = _csr_bits_for_layer(
@@ -138,13 +185,15 @@ def compression_report(
                 "bits_A": bits_A,
                 "bits_codebook": bits_codebook,
                 "nnz": nnz,
+                "passthrough": False,
             }
         )
 
     total_compressed_bits = (
-        total_bits_IR + total_bits_IC + total_bits_A + total_codebook
+        total_bits_IR + total_bits_IC + total_bits_A + total_codebook + passthrough_bits
     )
     CR = total_orig_bits / max(total_compressed_bits, 1)
+
     return {
         "orig_bits": int(total_orig_bits),
         "compressed_bits": int(total_compressed_bits),

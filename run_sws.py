@@ -210,6 +210,7 @@ def main():
     ap.add_argument("--pbits-fc", type=int, default=5)
     ap.add_argument("--pbits-conv", type=int, default=8)
 
+    ap.add_argument("--quant-skip-last", action="store_true")
     args = ap.parse_args()
     args = apply_preset(args)
 
@@ -347,6 +348,7 @@ def main():
             "use_huffman": not args.no_huffman,
             "pbits_fc": args.pbits_fc,
             "pbits_conv": args.pbits_conv,
+            "skip_last_matrix": args.quant_skip_last,
         },
         mixture_every=args.log_mixture_every,
         run_dir=run_dir,
@@ -361,7 +363,7 @@ def main():
 
     # Merge + Quantize
     prior.merge_components(kl_threshold=args.merge_kl_thresh)
-    prior.quantize_model(model)
+    prior.quantize_model(model, skip_last_matrix=args.quant_skip_last)
     q_acc = evaluate(model, test_loader, device)
     print(f"[Quantized] test acc: {q_acc:.4f}")
     quant_ckpt = os.path.join(run_dir, f"{args.dataset}_{args.model}_quantized.pt")
@@ -375,6 +377,7 @@ def main():
         use_huffman=not args.no_huffman,
         pbits_fc=args.pbits_fc,
         pbits_conv=args.pbits_conv,
+        skip_last_matrix=args.quant_skip_last,
     )
 
     # Paper-style summary

@@ -191,12 +191,26 @@ class MixturePrior(nn.Module):
             self.pi_logits.data = torch.log(pi1 + 1e-12)
 
     @torch.no_grad()
-    def quantize_model(self, model: nn.Module):
+    def quantize_model(self, model, *, skip_last_matrix: bool = False):
+        import torch.nn as nn
+
         mu, sigma2, pi = self.mixture_params()
-        log_pi = torch.log(pi + self.eps)
+        log_pi = torch.log(pi + 1e-8)
         const = -0.5 * torch.log(2 * math.pi * sigma2)
         inv_s2 = 1.0 / sigma2
-        for W in collect_weight_params(model):
+
+        # collect weights in order
+        Ws = []
+        for m in model.modules():
+            if isinstance(m, (nn.Linear, nn.Conv2d)):
+                Ws.append(m.weight)
+
+        # last 2D weight index
+        last2d = max((i for i, w in enumerate(Ws) if w.ndim >= 2), default=-1)
+
+        for i, W in enumerate(Ws):
+            if skip_last_matrix and i == last2d:
+                continue
             w = W.data.view(-1, 1)
             scores = (
                 log_pi.unsqueeze(0)
@@ -204,7 +218,9 @@ class MixturePrior(nn.Module):
                 - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0))
             )
             idx = torch.argmax(scores, dim=1)
-            W.data.copy_(mu[idx].view_as(W))
+            snapped = mu[idx].view_as(W)
+            snapped[idx.view_as(W) == 0] = 0.0  # exact zeros for comp 0
+            W.data.copy_(snapped)
 
     def snapshot(self) -> Dict:
         mu, sigma2, pi = self.mixture_params()
