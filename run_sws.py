@@ -4,7 +4,6 @@ import torch
 from sws.utils import (
     set_seed,
     get_device,
-    ensure_dir,
     collect_env,
     collect_weight_params,
     CSVLogger,
@@ -20,7 +19,6 @@ def layerwise_pruning_stats(model):
     stats = []
     for name, m in model.named_modules():
         import torch.nn as nn
-
         if isinstance(m, (nn.Linear, nn.Conv2d)):
             W = m.weight.data
             total = W.numel()
@@ -104,7 +102,7 @@ def apply_preset(args):
 
 def _recommend_tau(dataset: str, complexity_mode: str) -> float:
     """
-    Safe conservative defaults: small enough to avoid collapse on first try.
+    Safe conservative defaults.
     """
     if complexity_mode == "keras":
         return {"mnist": 1e-6, "cifar10": 5e-6, "cifar100": 1e-5}.get(dataset, 1e-6)
@@ -125,7 +123,8 @@ def _auto_calibrate_tau(
 
     comp_term = |comp_raw|            if mode == 'keras'
               = |comp_raw| / #batches if mode == 'epoch'
-    We use absolute value because comp_raw can be negative due to hyperprior terms.
+    We use absolute value because comp_raw can be negative due to hyperpriors.
+    A small safety cap is applied to avoid instabilities.
     """
     model.eval()
     xb, yb = next(iter(train_loader))
@@ -140,7 +139,7 @@ def _auto_calibrate_tau(
     denom = max(abs(denom_raw), 1e-6)  # handle negative & avoid blow-ups
 
     tau = (target_ratio * ce) / denom
-    tau = float(min(tau, 1e-3))  # safety cap (tune if needed)
+    tau = float(min(tau, 1e-3))  # safety cap; adjust if needed
 
     print(
         f"[auto-tau] ce≈{ce:.4g}, comp_raw≈{comp_raw:.4g}, "
@@ -151,18 +150,12 @@ def _auto_calibrate_tau(
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--dataset", choices=["mnist", "cifar10", "cifar100"], required=False
-    )
-    ap.add_argument(
-        "--model", choices=["lenet_300_100", "lenet5", "wrn_16_4"], required=False
-    )
+    ap.add_argument("--dataset", choices=["mnist", "cifar10", "cifar100"], required=False)
+    ap.add_argument("--model", choices=["lenet_300_100", "lenet5", "wrn_16_4"], required=False)
     ap.add_argument("--batch-size", type=int, default=128)
     ap.add_argument("--num-workers", type=int, default=2)
 
-    ap.add_argument(
-        "--preset", choices=["lenet_300_100", "lenet5", "wrn_16_4"], default=None
-    )
+    ap.add_argument("--preset", choices=["lenet_300_100", "lenet5", "wrn_16_4"], default=None)
 
     # Pretrain
     ap.add_argument("--pretrain-epochs", type=int, default=None)
@@ -215,16 +208,19 @@ def main():
     ap.add_argument("--pbits-fc", type=int, default=5)
     ap.add_argument("--pbits-conv", type=int, default=8)
 
-    ap.add_argument("--quant-skip-last", action="store_true")
+    # Quantization options
+    ap.add_argument("--quant-skip-last", action="store_true",
+                    help="Skip quantizing the last 2D weight (classifier).")
+    ap.add_argument("--quant-assign", choices=["map", "ml"], default="ml",
+                    help="Assignment rule for quantization and CR (default: ml).")
+
     args = ap.parse_args()
     args = apply_preset(args)
 
     set_seed(args.seed)
     device = get_device()
 
-    run_name = (
-        args.run_name or f"{args.dataset}_{args.model}_{time.strftime('%Y%m%d_%H%M%S')}"
-    )
+    run_name = args.run_name or f"{args.dataset}_{args.model}_{time.strftime('%Y%m%d_%H%M%S')}"
     run_dir = os.path.join(args.save_dir, run_name)
     os.makedirs(run_dir, exist_ok=True)
 
@@ -303,6 +299,8 @@ def main():
         prior.beta_alpha = args.beta_alpha
     if args.beta_beta is not None:
         prior.beta_beta = args.beta_beta
+
+    # Ensure prior is on the same device
     prior.to(device)
 
     # Decide tau: default or auto-calibrate
@@ -355,6 +353,7 @@ def main():
             "pbits_fc": args.pbits_fc,
             "pbits_conv": args.pbits_conv,
             "skip_last_matrix": args.quant_skip_last,
+            "assign_mode": args.quant_assign,
         },
         mixture_every=args.log_mixture_every,
         run_dir=run_dir,
@@ -369,7 +368,7 @@ def main():
 
     # Merge + Quantize
     prior.merge_components(kl_threshold=args.merge_kl_thresh)
-    prior.quantize_model(model, skip_last_matrix=args.quant_skip_last)
+    prior.quantize_model(model, skip_last_matrix=args.quant_skip_last, assign=args.quant_assign)
     q_acc = evaluate(model, test_loader, device)
     print(f"[Quantized] test acc: {q_acc:.4f}")
     quant_ckpt = os.path.join(run_dir, f"{args.dataset}_{args.model}_quantized.pt")
@@ -384,6 +383,7 @@ def main():
         pbits_fc=args.pbits_fc,
         pbits_conv=args.pbits_conv,
         skip_last_matrix=args.quant_skip_last,
+        assign_mode=args.quant_assign,
     )
 
     # Paper-style summary

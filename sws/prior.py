@@ -191,12 +191,19 @@ class MixturePrior(nn.Module):
             self.pi_logits.data = torch.log(pi1 + 1e-12)
 
     @torch.no_grad()
-    def quantize_model(self, model, *, skip_last_matrix: bool = False):
-        import torch.nn as nn
+    def quantize_model(self, model, *, skip_last_matrix: bool = True, assign: str = "ml"):
+        """
+        Hard-quantize weights to mixture means.
 
+        assign:
+        - "map": MAP under the learned mixture (uses mixing π and σ^2)
+        - "ml" : maximum likelihood per component (equal mixing; ignores π)
+                This avoids a strong bias towards the zero spike during snapping.
+        """
+        import torch.nn as nn
         mu, sigma2, pi = self.mixture_params()
-        log_pi = torch.log(pi + 1e-8)
-        const = -0.5 * torch.log(2 * math.pi * sigma2)
+        log_pi = torch.log(pi + self.eps)
+        const  = -0.5 * torch.log(2 * math.pi * sigma2)
         inv_s2 = 1.0 / sigma2
 
         # collect weights in order
@@ -206,20 +213,30 @@ class MixturePrior(nn.Module):
                 Ws.append(m.weight)
 
         # last 2D weight index
-        last2d = max((i for i, w in enumerate(Ws) if w.ndim >= 2), default=-1)
+        last2d = max((i for i, W in enumerate(Ws) if W.ndim >= 2), default=-1)
 
         for i, W in enumerate(Ws):
             if skip_last_matrix and i == last2d:
                 continue
+
             w = W.data.view(-1, 1)
-            scores = (
-                log_pi.unsqueeze(0)
-                + const.unsqueeze(0)
-                - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0))
-            )
+
+            if assign == "map":
+                # MAP: includes mixing proportions (π)
+                scores = (log_pi.unsqueeze(0)
+                        + const.unsqueeze(0)
+                        - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0)))
+            elif assign == "ml":
+                # ML: ignore π, keep per-component likelihood (equal mixing)
+                scores = (const.unsqueeze(0)
+                        - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0)))
+            else:
+                raise ValueError(f"Unknown assign mode: {assign}")
+
             idx = torch.argmax(scores, dim=1)
             snapped = mu[idx].view_as(W)
-            snapped[idx.view_as(W) == 0] = 0.0  # exact zeros for comp 0
+            # exact zeros for component 0 (numerical hygiene)
+            snapped[idx.view_as(W) == 0] = 0.0
             W.data.copy_(snapped)
 
     def snapshot(self) -> Dict:
