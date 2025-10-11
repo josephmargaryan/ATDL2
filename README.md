@@ -26,36 +26,48 @@ Next, to reproduce the results for each experiment:
 # LeNet-300-100 (MNIST)
 ```bash
 python run_sws.py --preset lenet_300_100 \
-  --pretrain-epochs 100 --retrain-epochs 30 \
-  --pi0 0.99 --num-components 17 \
+  --pretrain-epochs 30 --retrain-epochs 30 \
+  --pi0 0.95 --num-components 17 \
   --lr-w 5e-4 --lr-theta 3e-4 \
   --weight-decay 0.0 \
-  --complexity-mode epoch --auto-tau-ratio 0.05 --tau-warmup-epochs 5 \
+  --complexity-mode epoch --tau 3e-5 --tau-warmup-epochs 5 \
+  --gamma-alpha 50 --gamma-beta 0.1 \
+  --gamma-alpha-zero 100 --gamma-beta-zero 0.5 \
   --merge-kl-thresh 0.0 --quant-skip-last \
-  --cr-every 5 --run-name pt_lenet300_fix --save-dir runs --seed 1
+  --quant-assign ml \
+  --log-mixture-every 1 --cr-every 5 \
+  --run-name pt_lenet300_ml --save-dir runs --seed 1
 
 ```
 # LeNet-Caffe (MNIST
 ```bash
 python run_sws.py --preset lenet5 \
   --pretrain-epochs 100 --retrain-epochs 30 \
-  --pi0 0.99 --num-components 17 \
+  --pi0 0.95 --num-components 17 \
   --lr-w 5e-4 --lr-theta 3e-4 \
   --weight-decay 0.0 \
-  --complexity-mode epoch --auto-tau-ratio 0.05 --tau-warmup-epochs 5 \
+  --complexity-mode epoch --tau 3e-5 --tau-warmup-epochs 5 \
+  --gamma-alpha 50 --gamma-beta 0.1 \
+  --gamma-alpha-zero 100 --gamma-beta-zero 0.5 \
   --merge-kl-thresh 0.0 --quant-skip-last \
-  --cr-every 5 --run-name pt_lenet5_fix --save-dir runs --seed 1
+  --quant-assign ml \
+  --log-mixture-every 1 --cr-every 5 \
+  --run-name pt_lenet5_ml_safe --save-dir runs --seed 1
 ```
 # ResNet (light) (CIFAR100)
 ```bash
 python run_sws.py --preset wrn_16_4 \
   --pretrain-epochs 200 --retrain-epochs 60 \
-  --pi0 0.98 --num-components 64 \
+  --pi0 0.96 --num-components 64 \
   --lr-w 2e-4 --lr-theta 2e-4 \
   --weight-decay 0.0 \
-  --complexity-mode epoch --auto-tau-ratio 0.02 --tau-warmup-epochs 10 \
+  --complexity-mode epoch --tau 1e-5 --tau-warmup-epochs 10 \
+  --gamma-alpha 50 --gamma-beta 0.1 \
+  --gamma-alpha-zero 100 --gamma-beta-zero 0.5 \
   --merge-kl-thresh 0.0 --quant-skip-last \
-  --cr-every 2 --run-name pt_wrn16x4_fix --save-dir runs --seed 1
+  --quant-assign ml \
+  --log-mixture-every 1 --cr-every 2 \
+  --run-name pt_wrn16x4_ml_safe --save-dir runs --seed 1
 ```
 
 ### Figure‑style plots (optional):
