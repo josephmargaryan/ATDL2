@@ -1,4 +1,7 @@
-import os, json, argparse
+import os
+import json
+import argparse
+import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
@@ -14,78 +17,78 @@ def main():
         "--checkpoint",
         choices=["pre", "prequant", "quantized"],
         default="prequant",
-        help="Which weights to histogram.",
+        help="Which weights to histogram / overlay.",
     )
     args = ap.parse_args()
 
     mix_path = os.path.join(args.run_dir, "mixture_final.json")
+    if not os.path.exists(mix_path):
+        print(f"{mix_path} not found.")
+        return
+
     with open(mix_path, "r") as f:
         mix = json.load(f)
-    mu = torch.tensor(mix["mu"])
-    sigma2 = torch.tensor(mix["sigma2"])
-    pi = torch.tensor(mix["pi"])
+    mu = torch.tensor(mix["mu"], dtype=torch.float64)
+    sigma2 = torch.tensor(mix["sigma2"], dtype=torch.float64)
+    pi = torch.tensor(mix["pi"], dtype=torch.float64)
 
-    ckpt_map = {
-        "pre": f"*pre.pt",
-        "prequant": f"*prequant.pt",
-        "quantized": f"*quantized.pt",
-    }
-    # find the first matching checkpoint
-    ckpt = None
-    for fn in os.listdir(args.run_dir):
-        if fn.endswith(ckpt_map[args.checkpoint].split("*")[-1]):
-            ckpt = os.path.join(args.run_dir, fn)
-            break
-    if ckpt is None:
-        print("Could not find checkpoint; skipping histogram overlay of weights.")
-        W = None
-    else:
+    # Detect a checkpoint to overlay weights (optional)
+    suffix_map = {"pre": "_pre.pt", "prequant": "_prequant.pt", "quantized": "_quantized.pt"}
+    suffix = suffix_map[args.checkpoint]
+    ckpt = next((os.path.join(args.run_dir, fn)
+                 for fn in os.listdir(args.run_dir) if fn.endswith(suffix)), None)
+
+    weights_flat = None
+    if ckpt is not None:
         sd = load_state_dict(ckpt)
-        weights = []
+        ws = []
         for k, v in sd.items():
             if k.endswith(".weight"):
-                weights.append(v.view(-1).float().cpu())
-        if weights:
-            W = torch.cat(weights)
-        else:
-            W = None
+                ws.append(v.view(-1).float().cpu())
+        if ws:
+            weights_flat = torch.cat(ws).numpy()
 
-    # Plot mixture params
-    plt.figure()
+    # ---- Plot mixture component scatter (μ vs σ, size ∝ π)
+    plt.figure(figsize=(6, 5))
     xs = mu.numpy()
-    ys = sigma2.sqrt().numpy()
-    sizes = 300 * (pi.numpy() / pi.numpy().max())
-    plt.scatter(xs, ys, s=sizes)
+    stds = np.sqrt(sigma2.numpy())
+    pis = pi.numpy()
+    sizes = 300.0 * (pis / (pis.max() + 1e-12))
+    plt.scatter(xs, stds, s=sizes, alpha=0.8)
     plt.xlabel("component mean μ")
     plt.ylabel("σ")
     plt.title("Mixture components (size ∝ π)")
     plt.tight_layout()
-    plt.savefig(os.path.join(args.run_dir, "plot_mixture_components.png"))
+    out1 = os.path.join(args.run_dir, "plot_mixture_components.png")
+    plt.savefig(out1, dpi=150)
+    plt.close()
+    print("Saved:", out1)
 
-    # Weight histogram + mixture PDF overlay (optional)
-    if W is not None:
-        plt.figure()
-        ws = W.numpy()
-        plt.hist(ws, bins=120, density=True, alpha=0.5)
-        # overlay mixture
-        import numpy as np
-
-        grid = np.linspace(ws.min(), ws.max(), 1000)
-        pdf = 0
+    # ---- Histogram of weights + mixture PDF overlay (if we found weights)
+    if weights_flat is not None and weights_flat.size > 0:
+        plt.figure(figsize=(8, 5))
+        plt.hist(weights_flat, bins=120, density=True, alpha=0.5, label="weights")
+        grid = np.linspace(weights_flat.min(), weights_flat.max(), 1000)
+        # Gaussian mixture PDF
+        pdf = 0.0
         for j in range(len(xs)):
             pdf += (
-                (pi[j].item())
+                pis[j]
                 * (1.0 / np.sqrt(2 * np.pi * sigma2[j].item()))
                 * np.exp(-((grid - mu[j].item()) ** 2) / (2 * sigma2[j].item()))
             )
-        plt.plot(grid, pdf)
+        plt.plot(grid, pdf, linewidth=1.5, label="mixture pdf")
         plt.xlabel("w")
         plt.ylabel("density")
         plt.title(f"Weight histogram + mixture pdf ({args.checkpoint})")
+        plt.legend()
         plt.tight_layout()
-        plt.savefig(os.path.join(args.run_dir, "plot_weights_mixture.png"))
-
-    print(f"Saved mixture plots to {args.run_dir}")
+        out2 = os.path.join(args.run_dir, "plot_weights_mixture.png")
+        plt.savefig(out2, dpi=150)
+        plt.close()
+        print("Saved:", out2)
+    else:
+        print("No checkpoint weights found for histogram overlay; skipped.")
 
 
 if __name__ == "__main__":
