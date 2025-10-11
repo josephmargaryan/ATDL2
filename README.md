@@ -10,7 +10,7 @@ This repo reproduces the **Soft Weight-Sharing** approach for neural network com
 ```bash
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-# Choose the right Torch build if you need CUDA:
+# Choose the right Torch build for CUDA:
 # pip install --index-url https://download.pytorch.org/whl/cu121 torch torchvision
 ```
 if you are in a Google Colab, simply do:
@@ -22,38 +22,55 @@ if you are in a Google Colab, simply do:
 !pip install -e . --no-deps
 ```
 
-# Full reproduction protocol
-## Member 1 - LeNet‑300‑100 (MNIST)
+Next, to reproduce the results for each experiment:
+# LeNet-300-100 (MNIST)
 ```bash
 python run_sws.py --preset lenet_300_100 \
-  --run-name paper_lenet300100_seed1 --save-dir runs --seed 1
+  --pretrain-epochs 100 --retrain-epochs 30 \
+  --pi0 0.99 --num-components 17 \
+  --lr-w 5e-4 --lr-theta 3e-4 \
+  --weight-decay 0.0 \
+  --complexity-mode epoch --auto-tau-ratio 0.05 --tau-warmup-epochs 5 \
+  --merge-kl-thresh 0.0 --quant-skip-last \
+  --cr-every 5 --run-name pt_lenet300_fix --save-dir runs --seed 1
+
+```
+# LeNet-Caffe (MNIST
+```bash
+python run_sws.py --preset lenet5 \
+  --pretrain-epochs 100 --retrain-epochs 30 \
+  --pi0 0.99 --num-components 17 \
+  --lr-w 5e-4 --lr-theta 3e-4 \
+  --weight-decay 0.0 \
+  --complexity-mode epoch --auto-tau-ratio 0.05 --tau-warmup-epochs 5 \
+  --merge-kl-thresh 0.0 --quant-skip-last \
+  --cr-every 5 --run-name pt_lenet5_fix --save-dir runs --seed 1
+```
+# ResNet (light) (CIFAR100)
+```bash
+python run_sws.py --preset wrn_16_4 \
+  --pretrain-epochs 200 --retrain-epochs 60 \
+  --pi0 0.98 --num-components 64 \
+  --lr-w 2e-4 --lr-theta 2e-4 \
+  --weight-decay 0.0 \
+  --complexity-mode epoch --auto-tau-ratio 0.02 --tau-warmup-epochs 10 \
+  --merge-kl-thresh 0.0 --quant-skip-last \
+  --cr-every 2 --run-name pt_wrn16x4_fix --save-dir runs --seed 1
 ```
 
 ### Figure‑style plots (optional):
 ```bash
 # mixture dynamics (Fig. 3 left)
-python scripts/plot_mixture_dynamics.py --run-dir runs/paper_lenet300100_seed1
+python scripts/plot_mixture_dynamics.py --run-dir runs/<dir_to_run>
 # weight movement (Fig. 3 right)
-python scripts/plot_weights_scatter.py --run-dir runs/paper_lenet300100_seed1 --sample 20000
+python scripts/plot_weights_scatter.py --run-dir runs/<dir_to_run> --sample 20000
+
+python scripts/plot_filters.py --run-dir runs/<dir_to_run> --checkpoint pre
+python scripts/plot_filters.py --run-dir runs/<dir_to_run> --checkpoint quantized
+python scripts/plot_mixture_dynamics.py --run-dir runs/<dir_to_run>
+python scripts/plot_weights_scatter.py --run-dir runs/<dir_to_run> --sample 20000
 ```
 
-## Member 2 — LeNet‑5‑Caffe (MNIST)
-```bash
-python run_sws.py --preset lenet5 \
-  --run-name paper_lenet5_seed1 --save-dir runs --seed 1
-```
-### Filter grids & mixture dynamics:
-```bash
-python scripts/plot_filters.py --run-dir runs/paper_lenet5_seed1 --checkpoint pre
-python scripts/plot_filters.py --run-dir runs/paper_lenet5_seed1 --checkpoint quantized
-python scripts/plot_mixture_dynamics.py --run-dir runs/paper_lenet5_seed1
-python scripts/plot_weights_scatter.py --run-dir runs/paper_lenet5_seed1 --sample 20000
-```
-## Member 3 — “ResNet (light)” = WRN‑16‑4 (CIFAR‑10)
-```bash
-python run_sws.py --preset wrn_16_4 \
-  --run-name paper_wrn16x4_seed1 --save-dir runs --seed 1
-```
 ### Optional sweep to recreate the Pareto cloud (Fig. 2):
 ```bash
 # run your existing sweep (adjust ranges as you like)
