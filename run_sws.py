@@ -298,6 +298,7 @@ def main():
         prior.beta_alpha = args.beta_alpha
     if args.beta_beta is not None:
         prior.beta_beta = args.beta_beta
+    prior.to(device)
 
     # Decide tau: default or auto-calibrate
     if args.tau is None:
