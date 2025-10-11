@@ -60,15 +60,26 @@ python run_sws.py --preset wrn_16_4 \
 
 ### Figure‑style plots (optional):
 ```bash
-# mixture dynamics (Fig. 3 left)
-python scripts/plot_mixture_dynamics.py --run-dir runs/<dir_to_run>
-# weight movement (Fig. 3 right)
-python scripts/plot_weights_scatter.py --run-dir runs/<dir_to_run> --sample 20000
+# Curves
+python scripts/plot_curves.py --run-dir <RUN_DIR>
 
-python scripts/plot_filters.py --run-dir runs/<dir_to_run> --checkpoint pre
-python scripts/plot_filters.py --run-dir runs/<dir_to_run> --checkpoint quantized
-python scripts/plot_mixture_dynamics.py --run-dir runs/<dir_to_run>
-python scripts/plot_weights_scatter.py --run-dir runs/<dir_to_run> --sample 20000
+# Mixture evolution (needs --log-mixture-every 1)
+python scripts/plot_mixture_dynamics.py --run-dir <RUN_DIR>
+
+# Weight movement (w0 → wT prequant) + bands
+python scripts/plot_weights_scatter.py --run-dir <RUN_DIR> --sample 20000
+
+# Filters (only meaningful for conv nets)
+python scripts/plot_filters.py --run-dir <RUN_DIR> --checkpoint pre
+python scripts/plot_filters.py --run-dir <RUN_DIR> --checkpoint quantized
+
+# (Optional) Final mixture + weight histogram overlay
+python scripts/plot_mixture.py --run-dir <RUN_DIR> --checkpoint prequant
+python scripts/plot_mixture.py --run-dir <RUN_DIR> --checkpoint quantized
+
+# (Optional, if you sweep): Pareto
+python scripts/plot_pareto.py --csv sweeps.csv --root runs
+
 ```
 
 ### Optional sweep to recreate the Pareto cloud (Fig. 2):
