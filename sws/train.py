@@ -171,12 +171,13 @@ def retrain_soft_weight_sharing(
             ce = criterion(logits, y)  # mean over batch
 
             comp_raw = prior.complexity_loss(collect_weight_params(model))  # scalar
-            last_comp = comp_raw.item()
+            comp_val = comp_raw.abs()  # comp_raw can be negative due to hyperpriors
+            last_comp = comp_val.item()
 
             if complexity_mode == "keras":
-                comp_term = comp_raw
+                comp_term = comp_val
             elif complexity_mode == "epoch":
-                comp_term = comp_raw / num_batches
+                comp_term = comp_val / num_batches
             else:
                 raise ValueError(f"Unknown complexity_mode: {complexity_mode}")
 

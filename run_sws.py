@@ -123,23 +123,28 @@ def _auto_calibrate_tau(
     """
     Choose tau so that (tau * comp_term) ≈ target_ratio * CE on a single batch.
 
-    comp_term = comp_raw            if mode == 'keras'
-              = comp_raw / #batches if mode == 'epoch'
+    comp_term = |comp_raw|            if mode == 'keras'
+              = |comp_raw| / #batches if mode == 'epoch'
+    We use absolute value because comp_raw can be negative due to hyperprior terms.
     """
     model.eval()
     xb, yb = next(iter(train_loader))
     xb, yb = xb.to(device), yb.to(device)
     with torch.no_grad():
         logits = model(xb)
-        ce = torch.nn.functional.cross_entropy(logits, yb).item()
+        ce = torch.nn.functional.cross_entropy(logits, yb, reduction="mean").item()
         comp_raw = prior.complexity_loss(collect_weight_params(model)).item()
+
     num_batches = max(1, len(train_loader))
-    denom = comp_raw if complexity_mode == "keras" else comp_raw / num_batches
-    denom = max(denom, 1e-12)
+    denom_raw = comp_raw if complexity_mode == "keras" else comp_raw / num_batches
+    denom = max(abs(denom_raw), 1e-6)  # handle negative & avoid blow-ups
+
     tau = (target_ratio * ce) / denom
+    tau = float(min(tau, 1e-3))  # safety cap (tune if needed)
+
     print(
-        f"[auto-tau] ce≈{ce:.4g}, comp_raw≈{comp_raw:.4g}, mode={complexity_mode}, "
-        f"#batches={num_batches}, tau→{tau:.4g} (target_ratio={target_ratio})"
+        f"[auto-tau] ce≈{ce:.4g}, comp_raw≈{comp_raw:.4g}, "
+        f"denom_raw≈{denom_raw:.4g}, tau→{tau:.4g} (target_ratio={target_ratio})"
     )
     return tau
 
