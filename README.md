@@ -94,18 +94,34 @@ python scripts/plot_pareto.py --csv sweeps.csv --root runs
 
 ```
 
-### Optional sweep to recreate the Pareto cloud (Fig. 2):
+### Bayesian hyperparameter tuning:
 ```bash
-# run your existing sweep (adjust ranges as you like)
-python scripts/sweep_ablation.py --dataset mnist --model lenet_300_100 \
-  --pretrain-epochs 20 --retrain-epochs 40 \
-  --tau-list 8e-5 1e-4 1.5e-4 2e-4 3e-4 \
-  --pi0-list 0.995 0.999 \
-  --num-components-list 13 17 21 \
-  --save-dir runs_sweep
-
-# then plot $\Delta$ vs CR
-python scripts/plot_pareto.py --csv runs_sweep/sweep_mnist_lenet_300_100.csv --root runs
+python scripts/tune_optuna.py \
+  --preset lenet_300_100 \
+  --n-trials 30 \
+  --study-name sws_demo_lenet300100 \
+  --storage sqlite:///sws_optuna.db \
+  --sampler tpe \
+  --save-dir runs \
+  --max-acc-drop 0.5 \
+  --penalty 25 \
+  --timeout-sec 7200 \
+  --keep-failed \
+  --no-huffman \
+  --quant-skip-last \
+  --allow-pbits \
+  --pbits-fc 5 \
+  --pbits-conv 8 \
+  --batch-size 128 \
+  --num-workers 2 \
+  --pretrain-epochs 0 \
+  --retrain-epochs 100 \
+  --lr-pre 1e-3 \
+  --optim-pre adam \
+  --eval-every 1 \
+  --cr-every 10 \
+  --seed 42 \
+  --load-pretrained runs/pre_lenet300100/mnist_lenet_300_100_pre.pt
 ```
 
 
