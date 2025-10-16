@@ -126,6 +126,7 @@ def retrain_soft_weight_sharing(
     cr_kwargs: Dict = None,
     mixture_every=0,
     run_dir=None,
+    viz=None,  # optional TrainingGifVisualizer
 ):
     """
     Loss per batch:  loss = CE + tau * comp_term
@@ -137,12 +138,19 @@ def retrain_soft_weight_sharing(
       - 'epoch': comp_term = comp_raw / #batches      (epoch aggregate ≈ CE + tau * comp_raw)
 
     We also dump mixture parameters at 'epoch 0' so plotting always works.
+    If `viz` is provided (sws.viz.TrainingGifVisualizer), we emit a frame each epoch.
     """
     model.to(device)
     prior.to(device)
 
     opt = _make_optimizer(model, prior, lr_w, lr_theta, weight_decay)
     criterion = nn.CrossEntropyLoss()
+
+    # --- Optional: epoch 0 visual frame & baseline accuracy
+    last_test_acc = evaluate(model, test_loader, device)
+    if viz is not None:
+        viz.on_train_begin(model, prior, total_epochs=epochs)
+        viz.on_epoch_end(0, model, prior, test_acc=last_test_acc)
 
     num_batches = max(1, len(train_loader))
     t0 = time.time()
@@ -193,6 +201,11 @@ def retrain_soft_weight_sharing(
         test_acc = None
         if (ep % eval_every) == 0:
             test_acc = evaluate(model, test_loader, device)
+            last_test_acc = test_acc
+
+        # --- GIF frame
+        if viz is not None:
+            viz.on_epoch_end(ep, model, prior, test_acc=last_test_acc)
 
         cr = ""
         if cr_every and (ep % cr_every) == 0:
@@ -226,6 +239,11 @@ def retrain_soft_weight_sharing(
             f"{'' if test_acc is None else f'test_acc={test_acc:.4f} '} "
             f"{'' if not cr else f'CR_est={cr} '}elapsed={format_seconds(time.time()-t0)}"
         )
+
+    # finalize GIF
+    if viz is not None:
+        gif_path = viz.on_train_end()
+        print(f"[viz] wrote GIF to: {gif_path}")
 
     final_acc = evaluate(model, test_loader, device)
     return final_acc

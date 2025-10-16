@@ -13,6 +13,7 @@ from sws.models import make_model
 from sws.prior import init_mixture, MixturePrior
 from sws.train import train_standard, retrain_soft_weight_sharing, evaluate
 from sws.compress import compression_report
+from sws.viz import TrainingGifVisualizer  # <-- NEW
 
 
 def layerwise_pruning_stats(model):
@@ -214,6 +215,16 @@ def main():
     ap.add_argument("--quant-assign", choices=["map", "ml"], default="ml",
                     help="Assignment rule for quantization and CR (default: ml).")
 
+    # --- NEW: GIF options
+    ap.add_argument("--make-gif", action="store_true",
+                    help="Generate a retraining GIF (weight scatter + mixture bands).")
+    ap.add_argument("--gif-fps", type=int, default=2)
+    ap.add_argument("--gif-sample", type=int, default=50000)
+    ap.add_argument("--gif-xmin", type=float, default=None)
+    ap.add_argument("--gif-xmax", type=float, default=None)
+    ap.add_argument("--gif-ymin", type=float, default=None)
+    ap.add_argument("--gif-ymax", type=float, default=None)
+
     args = ap.parse_args()
     args = apply_preset(args)
 
@@ -228,6 +239,21 @@ def main():
         json.dump(vars(args), f, indent=2)
     with open(os.path.join(run_dir, "env.json"), "w") as f:
         json.dump(collect_env(), f, indent=2)
+
+    # --- NEW: construct visualizer if requested
+    viz = None
+    if args.make_gif:
+        xlim = (args.gif_xmin, args.gif_xmax) if (args.gif_xmin is not None and args.gif_xmax is not None) else None
+        ylim = (args.gif_ymin, args.gif_ymax) if (args.gif_ymin is not None and args.gif_ymax is not None) else None
+        viz = TrainingGifVisualizer(
+            out_dir=os.path.join(run_dir, "figures"),
+            tag="retraining",
+            framerate=args.gif_fps,
+            sample=args.gif_sample,
+            xlim=xlim,
+            ylim=ylim,
+            bins=200,
+        )
 
     # Data & model
     train_loader, test_loader, num_classes = make_loaders(
@@ -357,6 +383,7 @@ def main():
         },
         mixture_every=args.log_mixture_every,
         run_dir=run_dir,
+        viz=viz,  # <-- NEW
     )
     print(f"[Re-trained (soft weight sharing)] test acc: {re_acc:.4f}")
 
