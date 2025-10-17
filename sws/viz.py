@@ -31,7 +31,7 @@ class TrainingGifVisualizer:
         tag: str = "retraining",
         framerate: int = 2,
         notebook_display: bool = False,
-        cleanup_frames: bool = False,
+        cleanup_frames: bool = True,
     ):
         self.out_dir = out_dir
         os.makedirs(self.out_dir, exist_ok=True)
@@ -91,6 +91,11 @@ class TrainingGifVisualizer:
             if self.cleanup_frames:
                 for fp in frame_paths:
                     os.remove(fp)
+                # Remove the now-empty frames directory
+                try:
+                    os.rmdir(self.frames_dir)
+                except OSError:
+                    pass  # Directory not empty or doesn't exist - ignore
         return self.gif_path
 
     @torch.no_grad()

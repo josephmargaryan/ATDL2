@@ -97,6 +97,31 @@ python run_sws.py --preset wrn_16_4 \
   --run-name pt_wrn16x4_ml_safe --save-dir runs --seed 1
 ```
 
+### GIF visualization during training (optional):
+Generate animated scatter plots showing weight evolution from pretrained to retrained state:
+
+```bash
+# Add --make-gif to any training run
+python run_sws.py --preset lenet_300_100 \
+  --pretrain-epochs 30 --retrain-epochs 30 \
+  --make-gif \
+  --run-name my_experiment --save-dir runs
+
+# Customize frame rate (default: 2 fps)
+python run_sws.py --preset lenet_300_100 \
+  --pretrain-epochs 30 --retrain-epochs 30 \
+  --make-gif --gif-fps 5 \
+  --run-name my_experiment --save-dir runs
+
+# Keep temporary frame images for inspection (default: auto-removed)
+python run_sws.py --preset lenet_300_100 \
+  --pretrain-epochs 30 --retrain-epochs 30 \
+  --make-gif --gif-keep-frames \
+  --run-name my_experiment --save-dir runs
+```
+
+Output: `<RUN_DIR>/figures/retraining.gif`
+
 ### Figure‑style plots (optional):
 ```bash
 # Curves

@@ -229,11 +229,8 @@ def main():
     ap.add_argument("--make-gif", action="store_true",
                     help="Generate a retraining GIF (weight scatter + mixture bands).")
     ap.add_argument("--gif-fps", type=int, default=2)
-    ap.add_argument("--gif-sample", type=int, default=50000)
-    ap.add_argument("--gif-xmin", type=float, default=None)
-    ap.add_argument("--gif-xmax", type=float, default=None)
-    ap.add_argument("--gif-ymin", type=float, default=None)
-    ap.add_argument("--gif-ymax", type=float, default=None)
+    ap.add_argument("--gif-keep-frames", action="store_true",
+                    help="Keep temporary frame images after GIF creation (default: remove).")
 
     args = ap.parse_args()
     args = apply_preset(args)
@@ -253,16 +250,11 @@ def main():
     # --- NEW: construct visualizer if requested
     viz = None
     if args.make_gif:
-        xlim = (args.gif_xmin, args.gif_xmax) if (args.gif_xmin is not None and args.gif_xmax is not None) else None
-        ylim = (args.gif_ymin, args.gif_ymax) if (args.gif_ymin is not None and args.gif_ymax is not None) else None
         viz = TrainingGifVisualizer(
             out_dir=os.path.join(run_dir, "figures"),
             tag="retraining",
             framerate=args.gif_fps,
-            sample=args.gif_sample,
-            xlim=xlim,
-            ylim=ylim,
-            bins=200,
+            cleanup_frames=not args.gif_keep_frames,
         )
 
     # Data & model
