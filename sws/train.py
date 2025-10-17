@@ -134,9 +134,10 @@ def retrain_soft_weight_sharing(
     comp_raw = -Σ_i log p(w_i) (+ hyper-priors), computed on CURRENT weights.
 
     complexity_mode:
-      - 'keras': comp_term = comp_raw                 (tutorial semantics)
-      - 'epoch': comp_term = comp_raw / #batches      (epoch aggregate ≈ CE + tau * comp_raw)
+      - 'keras': comp_term = comp_raw / dataset_size  (original tutorial semantics)
+      - 'epoch': comp_term = comp_raw / dataset_size   (proper per-sample normalization)
 
+    Both modes now normalize by dataset size to match the original TF/Keras implementation.
     We also dump mixture parameters at 'epoch 0' so plotting always works.
     If `viz` is provided (sws.viz.TrainingGifVisualizer), we emit a frame each epoch.
     """
@@ -153,6 +154,7 @@ def retrain_soft_weight_sharing(
         viz.on_epoch_end(0, model, prior, test_acc=last_test_acc)
 
     num_batches = max(1, len(train_loader))
+    dataset_size = len(train_loader.dataset)  # Get total dataset size for proper normalization
     t0 = time.time()
 
     # ---- Snapshot mixture at "epoch 0"
@@ -183,9 +185,11 @@ def retrain_soft_weight_sharing(
             last_comp = comp_val.item()
 
             if complexity_mode == "keras":
-                comp_term = comp_val
+                # Original tutorial semantics: normalize by dataset size
+                comp_term = comp_val / dataset_size
             elif complexity_mode == "epoch":
-                comp_term = comp_val / num_batches
+                # Epoch-aggregated: still need dataset normalization
+                comp_term = comp_val * num_batches/ dataset_size
             else:
                 raise ValueError(f"Unknown complexity_mode: {complexity_mode}")
 
