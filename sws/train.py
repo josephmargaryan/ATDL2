@@ -189,7 +189,7 @@ def retrain_soft_weight_sharing(
                 comp_term = comp_val / dataset_size
             elif complexity_mode == "epoch":
                 # Epoch-aggregated: still need dataset normalization
-                comp_term = comp_val * num_batches/ dataset_size
+                comp_term = comp_val / dataset_size
             else:
                 raise ValueError(f"Unknown complexity_mode: {complexity_mode}")
 
