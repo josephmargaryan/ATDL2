@@ -22,6 +22,33 @@ if you are in a Google Colab, simply do:
 !pip install -e . --no-deps
 ```
 
+# Tutorial 
+Reproduction of Ullrich et al. tutorial using `torch`
+```bash
+python run_sws.py \
+    --model tutorialnet \
+    --dataset mnist \
+    --batch-size 128 \
+    --load-pretrained tutorial_torch/pretrained_model.pt \
+    --pretrain-epochs 0 \
+    --retrain-epochs 20 \
+    --num-components 16 \
+    --pi0 0.99 \
+    --lr-w 5e-4 \
+    --lr-theta-means 1e-4 \
+    --lr-theta-gammas 3e-3 \
+    --lr-theta-rhos 3e-3 \
+    --tau 0.003 \
+    --tau-warmup-epochs 0 \
+    --complexity-mode keras \
+    --quant-skip-last \
+    --quant-assign ml \
+    --log-mixture-every 1 \
+    --run-name tutorial_torch_rerun \
+    --save-dir runs \
+    --seed 42
+```
+
 Next, to reproduce the results for each experiment:
 # LeNet-300-100 (MNIST)
 ```bash
