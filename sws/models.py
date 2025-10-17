@@ -33,6 +33,30 @@ class LeNet5Caffe(nn.Module):
         return self.fc2(x)
 
 
+class TutorialNet(nn.Module):
+    """
+    2-conv + 2-FC network matching the original Keras tutorial (642K params).
+    Architecture:
+    - Conv2d(1->25, 5x5, stride=2) + ReLU  [28x28 -> 12x12]
+    - Conv2d(25->50, 3x3, stride=2) + ReLU [12x12 -> 5x5]
+    - Flatten -> Linear(1250->500) + ReLU
+    - Linear(500->10)
+    """
+    def __init__(self, num_classes=10):
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, 25, kernel_size=5, stride=2)
+        self.conv2 = nn.Conv2d(25, 50, kernel_size=3, stride=2)
+        self.fc1 = nn.Linear(50 * 5 * 5, 500)  # 1250 -> 500
+        self.fc2 = nn.Linear(500, num_classes)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc1(x))
+        return self.fc2(x)
+
+
 # ---- WRN-16-4 (light, no dropout) ----
 class BasicBlock(nn.Module):
     def __init__(self, in_planes, out_planes, stride):
@@ -111,6 +135,9 @@ def make_model(name: str, dataset: str, num_classes: int):
     if name == "lenet5":
         assert dataset == "mnist"
         return LeNet5Caffe(num_classes)
+    if name == "tutorial":
+        assert dataset == "mnist"
+        return TutorialNet(num_classes)
     if name == "wrn_16_4":
         assert dataset in ("cifar10", "cifar100")
         return WideResNet16x4(num_classes=num_classes, k=4)
