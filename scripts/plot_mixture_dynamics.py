@@ -11,9 +11,9 @@ def main():
     ap.add_argument("--run-dir", required=True)
     args = ap.parse_args()
 
-    files = sorted(glob.glob(os.path.join(args.run_dir, "mixture_epoch_*.json")))
+    files = sorted(glob.glob(os.path.join(args.run_dir, "mixture_epochs", "mixture_epoch_*.json")))
     if not files:
-        print("No mixture_epoch_*.json found. Re-run with --log-mixture-every 1.")
+        print("No mixture_epoch_*.json found in mixture_epochs/. Re-run with --log-mixture-every 1.")
         return
 
     mus, sigmas = [], []

@@ -185,7 +185,9 @@ def retrain_soft_weight_sharing(
 
     # ---- Snapshot mixture at "epoch 0"
     if mixture_every and run_dir:
-        with open(os.path.join(run_dir, f"mixture_epoch_{0:03d}.json"), "w") as f:
+        mixture_dir = os.path.join(run_dir, "mixture_epochs")
+        os.makedirs(mixture_dir, exist_ok=True)
+        with open(os.path.join(mixture_dir, f"mixture_epoch_{0:03d}.json"), "w") as f:
             json.dump(prior.snapshot(), f, indent=2)
 
     for ep in range(1, epochs + 1):
@@ -261,7 +263,8 @@ def retrain_soft_weight_sharing(
 
         # ---- Log mixture (every epoch when mixture_every==1)
         if mixture_every and run_dir and ((ep % mixture_every) == 0):
-            with open(os.path.join(run_dir, f"mixture_epoch_{ep:03d}.json"), "w") as f:
+            mixture_dir = os.path.join(run_dir, "mixture_epochs")
+            with open(os.path.join(mixture_dir, f"mixture_epoch_{ep:03d}.json"), "w") as f:
                 json.dump(prior.snapshot(), f, indent=2)
 
         print(
