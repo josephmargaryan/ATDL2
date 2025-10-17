@@ -21,6 +21,9 @@ def main():
     )
     args = ap.parse_args()
 
+    # Ensure figures directory exists
+    os.makedirs(os.path.join(args.run_dir, "figures"), exist_ok=True)
+
     mix_path = os.path.join(args.run_dir, "mixture_final.json")
     if not os.path.exists(mix_path):
         print(f"{mix_path} not found.")
@@ -59,7 +62,7 @@ def main():
     plt.ylabel("σ")
     plt.title("Mixture components (size ∝ π)")
     plt.tight_layout()
-    out1 = os.path.join(args.run_dir, "plot_mixture_components.png")
+    out1 = os.path.join(args.run_dir, "figures", "plot_mixture_components.png")
     plt.savefig(out1, dpi=150)
     plt.close()
     print("Saved:", out1)
@@ -83,7 +86,7 @@ def main():
         plt.title(f"Weight histogram + mixture pdf ({args.checkpoint})")
         plt.legend()
         plt.tight_layout()
-        out2 = os.path.join(args.run_dir, "plot_weights_mixture.png")
+        out2 = os.path.join(args.run_dir, "figures", "plot_weights_mixture.png")
         plt.savefig(out2, dpi=150)
         plt.close()
         print("Saved:", out2)

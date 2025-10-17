@@ -9,6 +9,9 @@ def main():
     ap.add_argument("--run-dir", required=True, help="runs/<dir> with metrics.csv")
     args = ap.parse_args()
 
+    # Ensure figures directory exists
+    os.makedirs(os.path.join(args.run_dir, "figures"), exist_ok=True)
+
     path = os.path.join(args.run_dir, "metrics.csv")
     if not os.path.exists(path):
         print(f"metrics.csv not found at {path}")
@@ -34,7 +37,7 @@ def main():
     plt.legend()
     plt.title("Train CE")
     plt.tight_layout()
-    out1 = os.path.join(args.run_dir, "plot_train_ce.png")
+    out1 = os.path.join(args.run_dir, "figures", "plot_train_ce.png")
     plt.savefig(out1, dpi=150)
     plt.close()
     print("Saved:", out1)
@@ -48,7 +51,7 @@ def main():
         plt.legend()
         plt.title("Complexity")
         plt.tight_layout()
-        out2 = os.path.join(args.run_dir, "plot_complexity.png")
+        out2 = os.path.join(args.run_dir, "figures", "plot_complexity.png")
         plt.savefig(out2, dpi=150)
         plt.close()
         print("Saved:", out2)
@@ -66,7 +69,7 @@ def main():
                 plt.legend()
                 plt.title("Test Accuracy")
                 plt.tight_layout()
-                out3 = os.path.join(args.run_dir, "plot_test_acc.png")
+                out3 = os.path.join(args.run_dir, "figures", "plot_test_acc.png")
                 plt.savefig(out3, dpi=150)
                 plt.close()
                 print("Saved:", out3)

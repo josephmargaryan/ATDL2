@@ -123,25 +123,33 @@ python run_sws.py --preset lenet_300_100 \
 Output: `<RUN_DIR>/figures/retraining.gif`
 
 ### Figure‑style plots (optional):
+All plotting scripts automatically save their outputs to `<RUN_DIR>/figures/`:
+
 ```bash
-# Curves
+# Training curves (CE, complexity, test accuracy)
+# Output: figures/plot_train_ce.png, figures/plot_complexity.png, figures/plot_test_acc.png
 python scripts/plot_curves.py --run-dir <RUN_DIR>
 
 # Mixture evolution (needs --log-mixture-every 1)
+# Output: figures/plot_mixture_dynamics.png
 python scripts/plot_mixture_dynamics.py --run-dir <RUN_DIR>
 
-# Weight movement (w0 → wT prequant) + bands
+# Weight movement scatter plot (w0 → wT prequant) + bands
+# Output: figures/plot_scatter_w0_wT.png
 python scripts/plot_weights_scatter.py --run-dir <RUN_DIR> --sample 20000
 
-# Filters (only meaningful for conv nets)
+# Convolutional filters (only meaningful for conv nets)
+# Output: figures/filters_{layer}_{checkpoint}.png
 python scripts/plot_filters.py --run-dir <RUN_DIR> --checkpoint pre
 python scripts/plot_filters.py --run-dir <RUN_DIR> --checkpoint quantized
 
-# (Optional) Final mixture + weight histogram overlay
+# Final mixture + weight histogram overlay
+# Output: figures/plot_mixture_components.png, figures/plot_weights_mixture.png
 python scripts/plot_mixture.py --run-dir <RUN_DIR> --checkpoint prequant
 python scripts/plot_mixture.py --run-dir <RUN_DIR> --checkpoint quantized
 
-# (Optional, if you sweep): Pareto
+# (Optional, if you sweep): Pareto plot
+# Note: This saves to the directory containing the CSV file, not figures/
 python scripts/plot_pareto.py --csv sweeps.csv --root runs
 
 ```

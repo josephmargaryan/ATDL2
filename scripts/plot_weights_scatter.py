@@ -24,6 +24,9 @@ def main():
     if args.sample_pos is not None:
         args.sample = args.sample_pos
 
+    # Ensure figures directory exists
+    os.makedirs(os.path.join(args.run_dir, "figures"), exist_ok=True)
+
     # Find checkpoints
     ckpt_pre = ckpt_prequant = None
     for fn in os.listdir(args.run_dir):
@@ -71,7 +74,7 @@ def main():
             plt.fill_between([x0, x1], m - 2 * s, m + 2 * s, alpha=0.08)
 
     plt.tight_layout()
-    out = os.path.join(args.run_dir, "plot_scatter_w0_wT.png")
+    out = os.path.join(args.run_dir, "figures", "plot_scatter_w0_wT.png")
     plt.savefig(out)
     print("Saved:", out)
 

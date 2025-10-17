@@ -11,6 +11,9 @@ def main():
     ap.add_argument("--run-dir", required=True)
     args = ap.parse_args()
 
+    # Ensure figures directory exists
+    os.makedirs(os.path.join(args.run_dir, "figures"), exist_ok=True)
+
     files = sorted(glob.glob(os.path.join(args.run_dir, "mixture_epochs", "mixture_epoch_*.json")))
     if not files:
         print("No mixture_epoch_*.json found in mixture_epochs/. Re-run with --log-mixture-every 1.")
@@ -45,7 +48,7 @@ def main():
     plt.ylabel("component mean μ (±2σ)")
     plt.title("Mixture dynamics")
     plt.tight_layout()
-    out = os.path.join(args.run_dir, "plot_mixture_dynamics.png")
+    out = os.path.join(args.run_dir, "figures", "plot_mixture_dynamics.png")
     plt.savefig(out, dpi=150)
     plt.close()
     print("Saved:", out)
