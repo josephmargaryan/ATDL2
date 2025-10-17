@@ -1,19 +1,112 @@
-# Soft Weight-Sharing Reproduction (Ullrich, Meeds, Welling)
+# Soft Weight-Sharing for Neural Network Compression
 
-This repo reproduces the **Soft Weight-Sharing** approach for neural network compression:
-- Pretrain a model (LeNet or light WRN) on MNIST/CIFAR.
-- Retrain with a learned Gaussian mixture prior (soft weight-sharing).
-- Merge nearby components, quantize weights to component means.
-- Report accuracy and compression rate using CSR + Huffman-style accounting.
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.9.0-ee4c2c.svg)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Install
-```bash
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-# Choose the right Torch build for CUDA:
-# pip install --index-url https://download.pytorch.org/whl/cu121 torch torchvision
+A PyTorch implementation of **Soft Weight-Sharing** for neural network compression, based on the paper by Ullrich, Meeds, and Welling (2017).
+
+## Authors
+
+- **Joseph Gavareshki Margaryan**
+- **Carlo Rosso**
+- **Gaetano Tedesco**
+- **Gabriel Sainz Vazquez**
+
+## Paper Reference
+
+This implementation is based on:
+
+> **Ullrich, K., Meeds, E., & Welling, M. (2017)**
+> *Soft Weight-Sharing for Neural Network Compression*
+> International Conference on Learning Representations (ICLR) 2017
+> [[Paper]](https://arxiv.org/abs/1702.04008) [[Original Code (Keras)]](https://github.com/KarenUllrich/Tutorial_BayesianCompressionForDL)
+
+## Overview
+
+This repository reproduces the Soft Weight-Sharing approach for neural network compression with the following pipeline:
+
+1. **Pretrain** a model (LeNet-300-100, LeNet-5-Caffe, or WideResNet-16-4) on MNIST or CIFAR
+2. **Retrain** with a learned Gaussian mixture prior that encourages weight clustering
+3. **Quantize** weights to mixture component means
+4. **Report** compression rate using CSR (Compressed Sparse Row) format with Huffman-style bit accounting
+
+The method achieves significant compression rates (up to 64x) with minimal accuracy loss by:
+- Learning a mixture of Gaussians as a weight prior during training
+- Encouraging weights to cluster around mixture component means
+- Quantizing weights to these learned cluster centers
+- Exploiting sparsity through a "pruning spike" component at zero
+
+## Repository Structure
+
 ```
-if you are in a Google Colab, simply do:
+torch-SWS/
+│
+├── sws/                          # Core library
+│   ├── models.py                 # LeNet-300-100, LeNet-5-Caffe, WideResNet-16-4
+│   ├── data.py                   # Dataset loaders (MNIST, CIFAR10, CIFAR100)
+│   ├── prior.py                  # MixturePrior: Gaussian mixture model with hyperpriors
+│   ├── train.py                  # Training loops (pretrain + soft weight-sharing retrain)
+│   ├── compress.py               # CSR bit accounting and compression reporting
+│   ├── utils.py                  # Helpers for weight collection, logging, etc.
+│   └── viz.py                    # TrainingGifVisualizer for weight evolution animations
+│
+├── scripts/                      # Visualization and analysis tools
+│   ├── plot_curves.py            # Training curves (loss, accuracy, compression)
+│   ├── plot_mixture_dynamics.py  # Mixture evolution over epochs
+│   ├── plot_weights_scatter.py   # Weight movement visualization (w0 → wT)
+│   ├── plot_mixture.py           # Final mixture + weight histogram
+│   ├── plot_filters.py           # Convolutional filter visualization
+│   ├── plot_pareto.py            # Pareto frontier for hyperparameter sweeps
+│   ├── inspect_assignments.py    # Weight-to-component assignment analysis
+│   ├── tune_optuna.py            # Bayesian hyperparameter optimization
+│   └── sweep_ablation.py         # Ablation study automation
+│
+├── run_sws.py                    # Main entry point for training
+├── requirements.txt              # Python dependencies
+│
+├── tutorial_pytorch.ipynb        # Tutorial notebook
+├── sws_colab.ipynb              # Google Colab-ready notebook
+└── sws_experiments.ipynb         # Experimental results notebook
+```
+
+## Installation
+
+### Requirements
+
+This project was developed with the following environment:
+
+**Python Environment:**
+- Python 3.11.13
+- PyTorch 2.9.0
+- torchvision 0.24.0
+- NumPy 2.3.4
+- Matplotlib 3.10.7
+- pandas 2.3.3
+- tqdm 4.67.1
+
+### Setup
+
+**Local Installation:**
+
+```bash
+# Clone the repository
+git clone https://github.com/josephmargaryan/ATDL2.git
+cd ATDL2
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# For CUDA support (optional, adjust for your CUDA version):
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+```
+
+**Google Colab:**
+
 ```bash
 %%capture
 !pip install --upgrade pip
@@ -22,171 +115,243 @@ if you are in a Google Colab, simply do:
 !pip install -e . --no-deps
 ```
 
-# Tutorial 
-Reproduction of Ullrich et al. tutorial using `torch`
-```bash
-python run_sws.py \
-    --model tutorialnet \
-    --dataset mnist \
-    --batch-size 128 \
-    --load-pretrained tutorial_torch/pretrained_model.pt \
-    --pretrain-epochs 0 \
-    --retrain-epochs 20 \
-    --num-components 16 \
-    --pi0 0.99 \
-    --lr-w 5e-4 \
-    --lr-theta-means 1e-4 \
-    --lr-theta-gammas 3e-3 \
-    --lr-theta-rhos 3e-3 \
-    --tau 0.003 \
-    --tau-warmup-epochs 0 \
-    --complexity-mode keras \
-    --quant-skip-last \
-    --quant-assign ml \
-    --log-mixture-every 1 \
-    --run-name tutorial_torch_rerun \
-    --save-dir runs \
-    --seed 42
-```
+## Quick Start
 
-Next, to reproduce the results for each experiment:
-# LeNet-300-100 (MNIST)
+The easiest way to get started is using one of the three available presets:
+
+### 1. LeNet-300-100 on MNIST
+
 ```bash
 python run_sws.py --preset lenet_300_100 \
   --pretrain-epochs 30 --retrain-epochs 30 \
-  --pi0 0.95 --num-components 17 \
-  --lr-w 5e-4 --lr-theta-means 1e-4 --lr-theta-gammas 3e-3 --lr-theta-rhos 3e-3 \
-  --weight-decay 0.0 \
-  --complexity-mode epoch --tau 3e-5 --tau-warmup-epochs 5 \
-  --gamma-alpha 50 --gamma-beta 0.1 \
-  --gamma-alpha-zero 100 --gamma-beta-zero 0.5 \
-  --merge-kl-thresh 0.0 --quant-skip-last \
-  --quant-assign ml \
-  --log-mixture-every 1 --cr-every 5 \
-  --run-name pt_lenet300_ml --save-dir runs --seed 1
-
+  --run-name my_first_experiment --save-dir runs --seed 1
 ```
-# LeNet-Caffe (MNIST)
+
+### 2. LeNet-5-Caffe on MNIST
+
 ```bash
 python run_sws.py --preset lenet5 \
   --pretrain-epochs 100 --retrain-epochs 30 \
-  --pi0 0.95 --num-components 17 \
-  --lr-w 5e-4 --lr-theta-means 1e-4 --lr-theta-gammas 3e-3 --lr-theta-rhos 3e-3 \
-  --weight-decay 0.0 \
-  --complexity-mode epoch --tau 3e-5 --tau-warmup-epochs 5 \
-  --gamma-alpha 50 --gamma-beta 0.1 \
-  --gamma-alpha-zero 100 --gamma-beta-zero 0.5 \
-  --merge-kl-thresh 0.0 --quant-skip-last \
-  --quant-assign ml \
-  --log-mixture-every 1 --cr-every 5 \
-  --run-name pt_lenet5_ml_safe --save-dir runs --seed 1
+  --run-name lenet5_mnist --save-dir runs --seed 1
 ```
-# ResNet (light) (CIFAR100)
+
+### 3. WideResNet-16-4 on CIFAR-100
+
 ```bash
 python run_sws.py --preset wrn_16_4 \
   --pretrain-epochs 200 --retrain-epochs 60 \
-  --pi0 0.96 --num-components 64 \
-  --lr-w 2e-4 --lr-theta-means 3e-4 --lr-theta-gammas 1e-3 --lr-theta-rhos 1e-3 \
-  --weight-decay 0.0 \
-  --complexity-mode epoch --tau 1e-5 --tau-warmup-epochs 10 \
-  --gamma-alpha 50 --gamma-beta 0.1 \
-  --gamma-alpha-zero 100 --gamma-beta-zero 0.5 \
-  --merge-kl-thresh 0.0 --quant-skip-last \
-  --quant-assign ml \
-  --log-mixture-every 1 --cr-every 2 \
-  --run-name pt_wrn16x4_ml_safe --save-dir runs --seed 1
+  --run-name wrn_cifar100 --save-dir runs --seed 1
 ```
 
-### GIF visualization during training (optional):
+## Usage
+
+### Training with Soft Weight-Sharing
+
+Each preset includes optimized hyperparameters. For full control, you can override any parameter:
+
+```bash
+python run_sws.py --preset lenet_300_100 \
+  --pretrain-epochs 30 \
+  --retrain-epochs 30 \
+  --pi0 0.95 \
+  --num-components 17 \
+  --lr-w 5e-4 \
+  --lr-theta-means 1e-4 \
+  --lr-theta-gammas 3e-3 \
+  --lr-theta-rhos 3e-3 \
+  --complexity-mode epoch \
+  --tau 3e-5 \
+  --tau-warmup-epochs 5 \
+  --quant-skip-last \
+  --quant-assign ml \
+  --run-name custom_experiment \
+  --save-dir runs \
+  --seed 42
+```
+
+**Key Parameters:**
+- `--pi0`: Prior probability for the zero-spike component (0.95-0.999)
+- `--num-components`: Number of mixture components
+- `--lr-w`: Learning rate for network weights
+- `--lr-theta-means/gammas/rhos`: Learning rates for mixture parameters
+- `--tau`: Complexity loss weight (higher = more compression)
+- `--tau-warmup-epochs`: Gradual tau warmup for stability
+- `--quant-assign`: Quantization assignment (`ml` or `map`)
+- `--quant-skip-last`: Skip quantizing the final layer (recommended)
+
+### Loading Pretrained Models
+
+Skip pretraining by loading a pretrained checkpoint:
+
+```bash
+python run_sws.py --preset lenet_300_100 \
+  --load-pretrained runs/pretrained/model.pt \
+  --pretrain-epochs 0 \
+  --retrain-epochs 100 \
+  --run-name from_checkpoint --save-dir runs
+```
+
+### Tutorial Reproduction
+
+Reproduce the original Keras tutorial results:
+
+```bash
+python run_sws.py \
+  --model tutorialnet \
+  --dataset mnist \
+  --batch-size 128 \
+  --load-pretrained tutorial_torch/pretrained_model.pt \
+  --pretrain-epochs 0 \
+  --retrain-epochs 20 \
+  --num-components 16 \
+  --pi0 0.99 \
+  --lr-w 5e-4 \
+  --lr-theta-means 1e-4 \
+  --lr-theta-gammas 3e-3 \
+  --lr-theta-rhos 3e-3 \
+  --tau 0.003 \
+  --tau-warmup-epochs 0 \
+  --complexity-mode keras \
+  --quant-skip-last \
+  --quant-assign ml \
+  --log-mixture-every 1 \
+  --run-name tutorial_reproduction \
+  --save-dir runs \
+  --seed 42
+```
+
+## Visualization
+
+### GIF Animation During Training
+
 Generate animated scatter plots showing weight evolution from pretrained to retrained state:
 
 ```bash
-# Add --make-gif to any training run
 python run_sws.py --preset lenet_300_100 \
   --pretrain-epochs 30 --retrain-epochs 30 \
   --make-gif \
-  --run-name my_experiment --save-dir runs
-
-# Customize frame rate (default: 2 fps)
-python run_sws.py --preset lenet_300_100 \
-  --pretrain-epochs 30 --retrain-epochs 30 \
-  --make-gif --gif-fps 5 \
-  --run-name my_experiment --save-dir runs
-
-# Keep temporary frame images for inspection (default: auto-removed)
-python run_sws.py --preset lenet_300_100 \
-  --pretrain-epochs 30 --retrain-epochs 30 \
-  --make-gif --gif-keep-frames \
-  --run-name my_experiment --save-dir runs
+  --gif-fps 5 \
+  --run-name gif_demo --save-dir runs
 ```
 
-Output: `<RUN_DIR>/figures/retraining.gif`
+**Options:**
+- `--make-gif`: Enable GIF generation
+- `--gif-fps <int>`: Frame rate (default: 2)
+- `--gif-keep-frames`: Keep temporary frame images (default: auto-removed)
 
-### Figure‑style plots (optional):
-All plotting scripts automatically save their outputs to `<RUN_DIR>/figures/`:
+**Output:** `<RUN_DIR>/figures/retraining.gif`
+
+### Static Plots
+
+All plotting scripts automatically save outputs to `<RUN_DIR>/figures/`:
 
 ```bash
-# Training curves (CE, complexity, test accuracy)
-# Output: figures/plot_train_ce.png, figures/plot_complexity.png, figures/plot_test_acc.png
-python scripts/plot_curves.py --run-dir <RUN_DIR>
+# Training curves (CE loss, complexity, test accuracy)
+python scripts/plot_curves.py --run-dir runs/my_experiment
 
-# Mixture evolution (needs --log-mixture-every 1)
-# Output: figures/plot_mixture_dynamics.png
-python scripts/plot_mixture_dynamics.py --run-dir <RUN_DIR>
+# Mixture evolution over epochs (requires --log-mixture-every 1)
+python scripts/plot_mixture_dynamics.py --run-dir runs/my_experiment
 
-# Weight movement scatter plot (w0 → wT prequant) + bands
-# Output: figures/plot_scatter_w0_wT.png
-python scripts/plot_weights_scatter.py --run-dir <RUN_DIR> --sample 20000
+# Weight movement scatter plot (w0 → wT)
+python scripts/plot_weights_scatter.py --run-dir runs/my_experiment --sample 20000
 
-# Convolutional filters (only meaningful for conv nets)
-# Output: figures/filters_{layer}_{checkpoint}.png
-python scripts/plot_filters.py --run-dir <RUN_DIR> --checkpoint pre
-python scripts/plot_filters.py --run-dir <RUN_DIR> --checkpoint quantized
+# Convolutional filters (pre vs quantized)
+python scripts/plot_filters.py --run-dir runs/my_experiment --checkpoint pre
+python scripts/plot_filters.py --run-dir runs/my_experiment --checkpoint quantized
 
-# Final mixture + weight histogram overlay
-# Output: figures/plot_mixture_components.png, figures/plot_weights_mixture.png
-python scripts/plot_mixture.py --run-dir <RUN_DIR> --checkpoint prequant
-python scripts/plot_mixture.py --run-dir <RUN_DIR> --checkpoint quantized
-
-# (Optional, if you sweep): Pareto plot
-# Note: This saves to the directory containing the CSV file, not figures/
-python scripts/plot_pareto.py --csv sweeps.csv --root runs
-
+# Final mixture + weight histogram
+python scripts/plot_mixture.py --run-dir runs/my_experiment --checkpoint prequant
+python scripts/plot_mixture.py --run-dir runs/my_experiment --checkpoint quantized
 ```
 
-### Bayesian hyperparameter tuning:
+## Hyperparameter Optimization
+
+Use Bayesian optimization (Optuna) for multi-objective tuning (maximize compression, minimize accuracy drop):
+
 ```bash
 python scripts/tune_optuna.py \
   --preset lenet_300_100 \
   --n-trials 30 \
-  --study-name sws_demo_lenet300100 \
+  --study-name sws_optimization \
   --storage sqlite:///sws_optuna.db \
   --sampler tpe \
   --save-dir runs \
   --max-acc-drop 0.5 \
   --penalty 25 \
-  --timeout-sec 7200 \
-  --keep-failed \
-  --no-huffman \
-  --quant-skip-last \
-  --allow-pbits \
-  --pbits-fc 5 \
-  --pbits-conv 8 \
-  --batch-size 128 \
-  --num-workers 2 \
   --pretrain-epochs 0 \
   --retrain-epochs 100 \
-  --lr-pre 1e-3 \
-  --optim-pre adam \
-  --eval-every 1 \
-  --cr-every 10 \
-  --seed 42 \
-  --load-pretrained runs/pre_lenet300100/mnist_lenet_300_100_pre.pt
+  --load-pretrained runs/pretrained/model.pt
 ```
 
+## Output Files
 
-After every run, you can check the pre-quantized weights:
-```bash
-# Assignments on the *pre-quantized* weights
-python scripts/inspect_assignments.py --run-dir <RUN_DIR>
+Each run creates a timestamped directory under `--save-dir` containing:
+
+| File | Description |
+|------|-------------|
+| `config.json` | All command-line arguments |
+| `env.json` | Environment info (PyTorch version, CUDA, etc.) |
+| `metrics.csv` | Per-epoch training metrics |
+| `*_pre.pt` | Pretrained model checkpoint |
+| `*_prequant.pt` | Post-retrain, pre-quantization checkpoint |
+| `*_quantized.pt` | Final quantized model |
+| `mixture_epochs/` | Mixture parameters at each epoch (if `--log-mixture-every > 0`) |
+| `mixture_final.json` | Final mixture before merging |
+| `report.json` | Detailed compression report (layer-wise bit breakdown) |
+| `summary_paper_metrics.json` | Paper-style summary (error rates, CR, sparsity) |
+| `layer_pruning.json` | Per-layer sparsity statistics |
+| `figures/` | All plots and GIFs |
+
+## Expected Results
+
+**LeNet-300-100 (MNIST):**
+- Baseline Accuracy: ~98.2%
+- Compressed Accuracy: ~98.0%
+- Compression Ratio: ~64x
+- Sparsity: ~95%
+
+**LeNet-5-Caffe (MNIST):**
+- Baseline Accuracy: ~99.2%
+- Compressed Accuracy: ~99.1%
+- Compression Ratio: ~40x
+- Sparsity: ~90%
+
+**WideResNet-16-4 (CIFAR-100):**
+- Baseline Accuracy: ~75%
+- Compressed Accuracy: ~74%
+- Compression Ratio: ~30x
+- Sparsity: ~85%
+
+## Key Implementation Details
+
+1. **Component 0 is the zero-spike:** μ₀ = 0, π₀ fixed to ~0.95-0.999 (encourages pruning)
+2. **Quantization assignment modes:**
+   - `ml` (maximum likelihood): Uses only per-component likelihood (recommended)
+   - `map` (maximum a posteriori): Includes mixing weights (may over-prune)
+3. **Skip last layer:** `--quant-skip-last` prevents quantizing the final classifier (improves accuracy)
+4. **Complexity modes:**
+   - `epoch`: Divides complexity by batch count (recommended)
+   - `keras`: Raw complexity per batch (original tutorial semantics)
+5. **Tau warmup:** Essential for stability; ramps tau linearly over first N epochs
+6. **Separate learning rates:** Different step sizes for weights (`lr-w`), means (`lr-theta-means`), variances (`lr-theta-gammas`), and mixing proportions (`lr-theta-rhos`)
+
+## Citation
+
+If you use this code in your research, please cite the original paper:
+
+```bibtex
+@inproceedings{ullrich2017soft,
+  title={Soft Weight-Sharing for Neural Network Compression},
+  author={Ullrich, Karen and Meeds, Edward and Welling, Max},
+  booktitle={International Conference on Learning Representations},
+  year={2017}
+}
 ```
+
+## Acknowledgments
+
+This implementation is inspired by the original Keras tutorial by Karen Ullrich. We thank the authors for their foundational work in Bayesian neural network compression.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
