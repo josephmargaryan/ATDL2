@@ -58,8 +58,11 @@ def apply_preset(args):
         set_if_missing("init_means", "from_weights")
         set_if_missing("init_sigma", 0.25)
         set_if_missing("merge_kl_thresh", 1e-10)
-        set_if_missing("lr_w", 1e-3)
-        set_if_missing("lr_theta", 5e-4)
+        # Keras-matching learning rates: [5e-4, 1e-4, 3e-3, 3e-3]
+        set_if_missing("lr_w", 5e-4)              # Network weights
+        set_if_missing("lr_theta_means", 1e-4)    # Mixture means (slower)
+        set_if_missing("lr_theta_gammas", 3e-3)   # Variances (FAST!)
+        set_if_missing("lr_theta_rhos", 3e-3)     # Mixing proportions
         set_if_missing("complexity_mode", "epoch")
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
@@ -74,8 +77,11 @@ def apply_preset(args):
         set_if_missing("init_means", "from_weights")
         set_if_missing("init_sigma", 0.25)
         set_if_missing("merge_kl_thresh", 1e-10)
-        set_if_missing("lr_w", 1e-3)
-        set_if_missing("lr_theta", 5e-4)
+        # Keras-matching learning rates
+        set_if_missing("lr_w", 5e-4)
+        set_if_missing("lr_theta_means", 1e-4)
+        set_if_missing("lr_theta_gammas", 3e-3)
+        set_if_missing("lr_theta_rhos", 3e-3)
         set_if_missing("complexity_mode", "epoch")
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
@@ -90,8 +96,11 @@ def apply_preset(args):
         set_if_missing("init_means", "from_weights")
         set_if_missing("init_sigma", 0.25)
         set_if_missing("merge_kl_thresh", 1e-10)
+        # Conservative LRs for larger model
         set_if_missing("lr_w", 1e-3)
-        set_if_missing("lr_theta", 3e-4)
+        set_if_missing("lr_theta_means", 3e-4)
+        set_if_missing("lr_theta_gammas", 1e-3)
+        set_if_missing("lr_theta_rhos", 1e-3)
         set_if_missing("complexity_mode", "epoch")
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
@@ -166,7 +175,9 @@ def main():
     # Retrain (SWS)
     ap.add_argument("--retrain-epochs", type=int, default=None)
     ap.add_argument("--lr-w", type=float, default=None)
-    ap.add_argument("--lr-theta", type=float, default=None)
+    ap.add_argument("--lr-theta-means", type=float, default=None)
+    ap.add_argument("--lr-theta-gammas", type=float, default=None)
+    ap.add_argument("--lr-theta-rhos", type=float, default=None)
     ap.add_argument("--weight-decay", type=float, default=0.0)
     ap.add_argument("--tau", type=float, default=None)
     ap.add_argument("--tau-warmup-epochs", type=int, default=10)
@@ -365,7 +376,9 @@ def main():
         device,
         epochs=args.retrain_epochs,
         lr_w=args.lr_w,
-        lr_theta=args.lr_theta,
+        lr_theta_means=args.lr_theta_means,
+        lr_theta_gammas=args.lr_theta_gammas,
+        lr_theta_rhos=args.lr_theta_rhos,
         weight_decay=args.weight_decay,
         tau=args.tau,
         tau_warmup_epochs=args.tau_warmup_epochs,

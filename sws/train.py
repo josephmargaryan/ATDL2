@@ -22,14 +22,30 @@ def evaluate(model: nn.Module, loader, device) -> float:
     return correct / total
 
 
-def _make_optimizer(model, prior, lr_w, lr_theta, weight_decay):
-    # Train weights and mixture θ in two param groups (Adam like the tutorial)
+def _make_optimizer(model, prior, lr_w, lr_theta_means, lr_theta_gammas, lr_theta_rhos, weight_decay):
+    """
+    Create optimizer with 4 parameter groups matching Keras implementation:
+    - Network weights: lr_w
+    - Mixture means (μ): lr_theta_means
+    - Mixture gammas (log σ²): lr_theta_gammas
+    - Mixture rhos (mixing): lr_theta_rhos
+
+    Keras uses: [5e-4, 1e-4, 3e-3, 3e-3] for [network, means, gammas, rhos].
+    The high LR for gammas is critical for variance adaptation during clustering.
+    """
     net_params = [p for p in collect_weight_params(model) if p.requires_grad]
-    theta_params = [p for p in prior.parameters() if p.requires_grad]
+
+    # Separate mixture params by type (matching Keras' custom optimizer)
+    means_params = [prior.mu]  # Learnable means (J-1 components)
+    gammas_params = [prior.log_sigma2, prior.log_sigma2_0]  # Log-variances (all J components)
+    rhos_params = [prior.pi_logits]  # Mixing proportion logits (J-1 components)
+
     return torch.optim.Adam(
         [
             {"params": net_params, "lr": lr_w, "weight_decay": weight_decay},
-            {"params": theta_params, "lr": lr_theta, "weight_decay": 0.0},
+            {"params": means_params, "lr": lr_theta_means, "weight_decay": 0.0},
+            {"params": gammas_params, "lr": lr_theta_gammas, "weight_decay": 0.0},
+            {"params": rhos_params, "lr": lr_theta_rhos, "weight_decay": 0.0},
         ]
     )
 
@@ -113,8 +129,10 @@ def retrain_soft_weight_sharing(
     device,
     *,
     epochs=100,
-    lr_w=1e-3,
-    lr_theta=5e-4,
+    lr_w=5e-4,
+    lr_theta_means=1e-4,
+    lr_theta_gammas=3e-3,
+    lr_theta_rhos=3e-3,
     weight_decay=0.0,
     tau=5e-3,
     tau_warmup_epochs=0,
@@ -133,6 +151,14 @@ def retrain_soft_weight_sharing(
 
     comp_raw = -Σ_i log p(w_i) (+ hyper-priors), computed on CURRENT weights.
 
+    Learning rates (matching Keras):
+      - lr_w: Network weights (default 5e-4)
+      - lr_theta_means: Mixture means μ (default 1e-4, slower than network)
+      - lr_theta_gammas: Mixture log-variances (default 3e-3, FAST for adaptation)
+      - lr_theta_rhos: Mixture mixing proportions (default 3e-3)
+
+    The high LR for gammas is CRITICAL for proper weight clustering.
+
     complexity_mode:
       - 'keras': comp_term = comp_raw / dataset_size  (original tutorial semantics)
       - 'epoch': comp_term = comp_raw / dataset_size   (proper per-sample normalization)
@@ -144,7 +170,7 @@ def retrain_soft_weight_sharing(
     model.to(device)
     prior.to(device)
 
-    opt = _make_optimizer(model, prior, lr_w, lr_theta, weight_decay)
+    opt = _make_optimizer(model, prior, lr_w, lr_theta_means, lr_theta_gammas, lr_theta_rhos, weight_decay)
     criterion = nn.CrossEntropyLoss()
 
     # --- Optional: epoch 0 visual frame & baseline accuracy
@@ -181,7 +207,9 @@ def retrain_soft_weight_sharing(
             ce = criterion(logits, y)  # mean over batch
 
             comp_raw = prior.complexity_loss(collect_weight_params(model))  # scalar
-            comp_val = comp_raw.abs()  # comp_raw can be negative due to hyperpriors
+            # Note: comp_raw can be negative when hyperpriors are satisfied (which is GOOD!)
+            # We use the raw value; negative values reduce loss (reward good configs)
+            comp_val = comp_raw
             last_comp = comp_val.item()
 
             if complexity_mode == "keras":
