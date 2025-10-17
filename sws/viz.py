@@ -163,16 +163,15 @@ class TrainingGifVisualizer:
         except Exception:
             pass
 
-        # Title format (like Keras: multi-line with space after /)
+        # Place text in top right corner of entire figure (where marginals meet)
         title = "Epoch: %d /%d" % (epoch, self.total_epochs or 0)
         if test_acc is not None:
             title += "\nTest accuracy: %.4f " % test_acc
 
-        # Adjust layout to make room for title at top
-        # Reserve top space: more for multi-line titles
-        top_margin = 0.94 if test_acc is not None else 0.96
-        g.fig.subplots_adjust(top=top_margin)
-        g.fig.suptitle(title, fontsize=12)
+        # Add text to top right corner using figure coordinates
+        g.fig.text(0.98, 0.98, title, transform=g.fig.transFigure,
+                   fontsize=12, ha='right', va='top',
+                   bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='gray'))
 
         # Display in notebook if enabled (like Keras)
         if self.notebook_display:
