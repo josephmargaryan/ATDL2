@@ -122,8 +122,7 @@ def _auto_calibrate_tau(
     """
     Choose tau so that (tau * comp_term) ≈ target_ratio * CE on a single batch.
 
-    comp_term = |comp_raw|            if mode == 'keras'
-              = |comp_raw| / #batches if mode == 'epoch'
+    comp_term = |comp_raw| / dataset_size  (for both 'keras' and 'epoch' modes)
     We use absolute value because comp_raw can be negative due to hyperpriors.
     A small safety cap is applied to avoid instabilities.
     """
@@ -135,8 +134,8 @@ def _auto_calibrate_tau(
         ce = torch.nn.functional.cross_entropy(logits, yb, reduction="mean").item()
         comp_raw = prior.complexity_loss(collect_weight_params(model)).item()
 
-    num_batches = max(1, len(train_loader))
-    denom_raw = comp_raw if complexity_mode == "keras" else comp_raw / num_batches
+    dataset_size = len(train_loader.dataset)
+    denom_raw = comp_raw / dataset_size
     denom = max(abs(denom_raw), 1e-6)  # handle negative & avoid blow-ups
 
     tau = (target_ratio * ce) / denom
