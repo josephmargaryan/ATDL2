@@ -162,7 +162,12 @@ class TrainingGifVisualizer:
         title = "Epoch: %d /%d" % (epoch, self.total_epochs or 0)
         if test_acc is not None:
             title += "\nTest accuracy: %.4f " % test_acc
-        plt.suptitle(title)
+
+        # Adjust layout to make room for title at top
+        # Reserve top space: more for multi-line titles
+        top_margin = 0.94 if test_acc is not None else 0.96
+        g.fig.subplots_adjust(top=top_margin)
+        g.fig.suptitle(title, fontsize=12)
 
         # Display in notebook if enabled (like Keras)
         if self.notebook_display:
