@@ -302,26 +302,6 @@ Each run creates a timestamped directory under `--save-dir` containing:
 | `layer_pruning.json` | Per-layer sparsity statistics |
 | `figures/` | All plots and GIFs |
 
-## Expected Results
-
-**LeNet-300-100 (MNIST):**
-- Baseline Accuracy: ~98.2%
-- Compressed Accuracy: ~98.0%
-- Compression Ratio: ~64x
-- Sparsity: ~95%
-
-**LeNet-5-Caffe (MNIST):**
-- Baseline Accuracy: ~99.2%
-- Compressed Accuracy: ~99.1%
-- Compression Ratio: ~40x
-- Sparsity: ~90%
-
-**WideResNet-16-4 (CIFAR-100):**
-- Baseline Accuracy: ~75%
-- Compressed Accuracy: ~74%
-- Compression Ratio: ~30x
-- Sparsity: ~85%
-
 ## Key Implementation Details
 
 1. **Component 0 is the zero-spike:** μ₀ = 0, π₀ fixed to ~0.95-0.999 (encourages pruning)
@@ -351,7 +331,3 @@ If you use this code in your research, please cite the original paper:
 ## Acknowledgments
 
 This implementation is inspired by the original Keras tutorial by Karen Ullrich. We thank the authors for their foundational work in Bayesian neural network compression.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
