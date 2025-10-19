@@ -1,0 +1,50 @@
+{
+  "orig_bits": 8518400,
+  "compressed_bits": 227049,
+  "CR": 37.51789261348872,
+  "nnz": 99746,
+  "layers": [
+    {
+      "layer": "Linear",
+      "shape": [
+        300,
+        784
+      ],
+      "orig_bits": 7526400,
+      "bits_IR": 5117,
+      "bits_IC": 97657,
+      "bits_A": 81450,
+      "bits_codebook": 512,
+      "nnz": 85008,
+      "passthrough": false
+    },
+    {
+      "layer": "Linear",
+      "shape": [
+        100,
+        300
+      ],
+      "orig_bits": 960000,
+      "bits_IR": 1414,
+      "bits_IC": 26115,
+      "bits_A": 12739,
+      "bits_codebook": 512,
+      "nnz": 13889,
+      "passthrough": false
+    },
+    {
+      "layer": "Linear",
+      "shape": [
+        10,
+        100
+      ],
+      "orig_bits": 32000,
+      "bits_IR": 110,
+      "bits_IC": 652,
+      "bits_A": 259,
+      "bits_codebook": 512,
+      "nnz": 849,
+      "passthrough": false
+    }
+  ]
+}
