@@ -36,10 +36,20 @@ def main():
     pi = torch.tensor(mix["pi"], dtype=torch.float64)
 
     # Detect a checkpoint to overlay weights (optional)
-    suffix_map = {"pre": "_pre.pt", "prequant": "_prequant.pt", "quantized": "_quantized.pt"}
+    suffix_map = {
+        "pre": "_pre.pt",
+        "prequant": "_prequant.pt",
+        "quantized": "_quantized.pt",
+    }
     suffix = suffix_map[args.checkpoint]
-    ckpt = next((os.path.join(args.run_dir, fn)
-                 for fn in os.listdir(args.run_dir) if fn.endswith(suffix)), None)
+    ckpt = next(
+        (
+            os.path.join(args.run_dir, fn)
+            for fn in os.listdir(args.run_dir)
+            if fn.endswith(suffix)
+        ),
+        None,
+    )
 
     weights_flat = None
     if ckpt is not None:

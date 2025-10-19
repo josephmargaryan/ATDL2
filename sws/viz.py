@@ -3,6 +3,7 @@ import os
 import numpy as np
 import imageio
 import matplotlib
+
 matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -49,6 +50,7 @@ class TrainingGifVisualizer:
         if self.notebook_display:
             try:
                 from IPython import display as ipython_display
+
                 self.ipython_display = ipython_display
             except ImportError:
                 print("Warning: IPython not available, notebook_display disabled")
@@ -72,9 +74,16 @@ class TrainingGifVisualizer:
         self._make_frame(epoch=0, model=model, prior=prior, test_acc=None)
 
     @torch.no_grad()
-    def on_epoch_end(self, epoch: int, model, prior, test_acc=None, title_extra: str = ""):
-        self._make_frame(epoch=epoch, model=model, prior=prior,
-                         test_acc=test_acc, title_extra=title_extra)
+    def on_epoch_end(
+        self, epoch: int, model, prior, test_acc=None, title_extra: str = ""
+    ):
+        self._make_frame(
+            epoch=epoch,
+            model=model,
+            prior=prior,
+            test_acc=test_acc,
+            title_extra=title_extra,
+        )
 
     def on_train_end(self) -> str:
         frames = []
@@ -85,7 +94,9 @@ class TrainingGifVisualizer:
                 frames.append(imageio.imread(fp))
                 frame_paths.append(fp)
         if frames:
-            imageio.mimsave(self.gif_path, frames, duration=1.0 / max(1, self.framerate))
+            imageio.mimsave(
+                self.gif_path, frames, duration=1.0 / max(1, self.framerate)
+            )
 
             # Optional: cleanup frame files after GIF creation (like Keras)
             if self.cleanup_frames:
@@ -99,7 +110,9 @@ class TrainingGifVisualizer:
         return self.gif_path
 
     @torch.no_grad()
-    def _make_frame(self, epoch: int, model, prior, test_acc=None, title_extra: str = ""):
+    def _make_frame(
+        self, epoch: int, model, prior, test_acc=None, title_extra: str = ""
+    ):
         if self._w0 is None:
             return
 
@@ -126,14 +139,15 @@ class TrainingGifVisualizer:
         # plot
         sns.set(style="whitegrid", rc={"figure.figsize": (8, 8)})
         g = sns.jointplot(
-            x=w0[I], y=wT[I],
+            x=w0[I],
+            y=wT[I],
             height=8,
             kind="scatter",
             color="g",
-            marker='o',
-            joint_kws={"s": 8, "edgecolor": 'w'},
+            marker="o",
+            joint_kws={"s": 8, "edgecolor": "w"},
             marginal_kws=dict(bins=1000),
-            ratio=4
+            ratio=4,
         )
         ax = g.ax_joint
 
@@ -143,12 +157,14 @@ class TrainingGifVisualizer:
             ax.hlines(muk, x0, x1, lw=0.5)
             if k == 0:
                 # Component 0 (zero-spike): blue
-                ax.fill_between(xs, muk - 2*stdk, muk + 2*stdk,
-                                color='blue', alpha=0.1)
+                ax.fill_between(
+                    xs, muk - 2 * stdk, muk + 2 * stdk, color="blue", alpha=0.1
+                )
             else:
                 # Other components: red
-                ax.fill_between(xs, muk - 2*stdk, muk + 2*stdk,
-                                color='red', alpha=0.1)
+                ax.fill_between(
+                    xs, muk - 2 * stdk, muk + 2 * stdk, color="red", alpha=0.1
+                )
 
         # Set axis labels (short form like Keras)
         g.set_axis_labels("Pretrained", "Retrained")
@@ -169,9 +185,16 @@ class TrainingGifVisualizer:
             title += "\nTest accuracy: %.4f " % test_acc
 
         # Add text to top right corner using figure coordinates
-        g.fig.text(0.98, 0.98, title, transform=g.fig.transFigure,
-                   fontsize=12, ha='right', va='top',
-                   bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='gray'))
+        g.fig.text(
+            0.98,
+            0.98,
+            title,
+            transform=g.fig.transFigure,
+            fontsize=12,
+            ha="right",
+            va="top",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8, edgecolor="gray"),
+        )
 
         # Display in notebook if enabled (like Keras)
         if self.notebook_display:
@@ -181,4 +204,3 @@ class TrainingGifVisualizer:
         fn = os.path.join(self.frames_dir, f"frame_{epoch:03d}.png")
         g.savefig(fn, bbox_inches="tight", dpi=100)  # DPI 100 like Keras
         plt.close(g.fig)
-

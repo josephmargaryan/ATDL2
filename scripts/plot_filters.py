@@ -50,7 +50,9 @@ def main():
         key = f"{layer}.weight"
         if key not in sd:
             continue
-        out = os.path.join(args.run_dir, "figures", f"filters_{layer}_{args.checkpoint}.png")
+        out = os.path.join(
+            args.run_dir, "figures", f"filters_{layer}_{args.checkpoint}.png"
+        )
         grid_imshow(sd[key], f"{layer} {args.checkpoint}", out)
         print("Saved:", out)
 
