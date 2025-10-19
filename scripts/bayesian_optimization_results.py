@@ -5,25 +5,29 @@ import glob
 import numpy as np
 
 
-def extract_metrics(folder_name, file_name, fields):
+def extract_metrics(folder_name, files, fields):
     runs_path = os.path.join("runs", folder_name)
 
     # Find all summary_paper_metrics.json files in the runs folder and subfolders
-    pattern = os.path.join(runs_path, "**", file_name)
-    summary_files = glob.glob(pattern, recursive=True)
+    patterns = [os.path.join(runs_path, "**", file_name) for file_name in files]
+    summary_files = [
+        f for pattern in patterns for f in glob.glob(pattern, recursive=True)
+    ]
 
-    res = []
+    res = {}
     for file_path in summary_files:
         try:
             with open(file_path, "r") as f:
                 data = json.load(f)
-                extracted_fields = {}
+                name = file_path.lstrip(runs_path)
+                name = name.split("/")[0]
+
+                if name not in res.keys():
+                    res[name] = {}
 
                 for e in fields:
                     if data.get(e):
-                        extracted_fields[e] = data.get(e)
-
-                res.append(extracted_fields)
+                        res[name][e] = data.get(e)
 
         except Exception as e:
             print(f"Error reading {file_path}: {e}")
@@ -46,7 +50,19 @@ if __name__ == "__main__":
         "gamma_alpha_zero",
         "gamma_beta_zero",
         "merge_kl_thresh",
+        "CR",
+        "acc_quantized",
     ]
-    metrics = extract_metrics(folder_name, "config.json", hyperparams)
+    metrics = extract_metrics(
+        folder_name, ["config.json", "summary_paper_metrics.json"], hyperparams
+    )
 
-    print(metrics)
+    for row in metrics.values():
+        values = []
+        for hyperparam in hyperparams:
+            if "lr" in hyperparam:
+                values.append(f"{row[hyperparam]:.1E}")
+            else:
+                values.append(f"{row[hyperparam]:.3f}")
+
+        print(" & ".join(values) + " \\\\")
