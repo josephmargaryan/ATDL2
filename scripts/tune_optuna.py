@@ -48,17 +48,29 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
     # ---- Sample the hyperparameters (Bayesian search space) ----
     # Choose ranges conservatively; feel free to widen for CIFAR.
     hp = {}
-    hp["tau"] = trial.suggest_float("tau", 1e-6, 5e-2, log=True)
-    hp["complexity_mode"] = trial.suggest_categorical("complexity_mode", ["keras", "epoch"])
-    hp["num_components"] = trial.suggest_categorical("num_components", [9, 13, 17, 33, 65])
-    hp["pi0"] = trial.suggest_float("pi0", 0.98, 0.9999)
-    hp["init_sigma"] = trial.suggest_float("init_sigma", 0.05, 0.5, log=True)
-    hp["lr_w"] = trial.suggest_float("lr_w", 3e-4, 3e-3, log=True)
-    hp["lr_theta"] = trial.suggest_float("lr_theta", 1e-4, 1e-3, log=True)
-    hp["tau_warmup_epochs"] = trial.suggest_int("tau_warmup_epochs", 0, 20)
-    hp["weight_decay"] = trial.suggest_categorical("weight_decay", [0.0, 1e-5, 5e-5, 1e-4, 5e-4])
-    hp["quant_assign"] = trial.suggest_categorical("quant_assign", ["map", "ml"])
-    hp["merge_kl_thresh"] = trial.suggest_float("merge_kl_thresh", 1e-12, 1e-4, log=True)
+    hp["tau"] = trial.suggest_float("tau", 5e-4, 5e-3, log=True)
+    hp["complexity_mode"] = trial.suggest_categorical("complexity_mode", ["epoch"])
+    hp["num_components"] = trial.suggest_categorical("num_components", [17])
+    hp["pi0"] = trial.suggest_float("pi0", 0.985, 0.999)
+    hp["init_sigma"] = trial.suggest_float("init_sigma", 0.05, 0.2, log=True)
+    hp["lr_w"] = (
+        args.lr_pre
+        if args.lr_pre
+        else trial.suggest_float("lr_w", 1e-5, 1e-1, log=True)
+    )
+    hp["lr_theta_means"] = trial.suggest_float("lr_theta_means", 5e-5, 3e-4, log=True)
+    hp["lr_theta_gammas"] = trial.suggest_float("lr_theta_gammas", 5e-5, 3e-4, log=True)
+    hp["lr_theta_rhos"] = trial.suggest_float("lr_theta_rhos", 5e-5, 3e-4, log=True)
+    hp["tau_warmup_epochs"] = 0
+    hp["gamma_alpha"] = trial.suggest_float("gamma_alpha", 100, 1000)
+    hp["gamma_beta"] = trial.suggest_float("gamma_beta", 0.5, 15)
+    hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 50, 500)
+    hp["gamma_beta_zero"] = trial.suggest_float("gamma_beta_zero", 30, 100)
+    hp["weight_decay"] = 0
+    hp["quant_assign"] = (
+        "ml"  # trial.suggest_categorical("quant_assign", ["map", "ml"])
+    )
+    hp["merge_kl_thresh"] = trial.suggest_float("merge_kl_thresh", 2e-3, 2e-2, log=True)
 
     # Optionally let users tune these too:
     if args.allow_pbits:
@@ -74,33 +86,71 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
 
     py = sys.executable  # use current Python
     cmd = [
-        py, "run_sws.py",
-        "--preset", args.preset,
-        "--save-dir", args.save_dir,
-        "--run-name", run_name,
-        "--batch-size", str(args.batch_size),
-        "--num-workers", str(args.num_workers),
-        "--pretrain-epochs", str(args.pretrain_epochs),
-        "--retrain-epochs", str(args.retrain_epochs),
-        "--lr-pre", str(args.lr_pre),
-        "--optim-pre", args.optim_pre,
-        "--eval-every", str(args.eval_every),
-        "--cr-every", str(args.cr_every),
-        "--seed", str(args.seed + trial.number),
+        py,
+        "run_sws.py",
+        "--preset",
+        args.preset,
+        "--save-dir",
+        args.save_dir,
+        "--run-name",
+        run_name,
+        "--batch-size",
+        str(args.batch_size),
+        "--num-workers",
+        str(args.num_workers),
+        "--pretrain-epochs",
+        str(args.pretrain_epochs),
+        "--retrain-epochs",
+        str(args.retrain_epochs),
+        "--lr-pre",
+        str(args.lr_pre),
+        "--optim-pre",
+        args.optim_pre,
+        "--eval-every",
+        str(args.eval_every),
+        "--cr-every",
+        str(args.cr_every),
+        "--seed",
+        str(args.seed + trial.number),
         # mixture / training hparams
-        "--num-components", str(hp["num_components"]),
-        "--pi0", str(hp["pi0"]),
-        "--init-sigma", str(hp["init_sigma"]),
-        "--merge-kl-thresh", str(hp["merge_kl_thresh"]),
-        "--lr-w", str(hp["lr_w"]),
-        "--lr-theta", str(hp["lr_theta"]),
-        "--tau", str(hp["tau"]),
-        "--tau-warmup-epochs", str(hp["tau_warmup_epochs"]),
-        "--complexity-mode", hp["complexity_mode"],
-        "--weight-decay", str(hp["weight_decay"]),
-        "--quant-assign", hp["quant_assign"],
-        "--pbits-fc", str(hp["pbits_fc"]),
-        "--pbits-conv", str(hp["pbits_conv"]),
+        "--num-components",
+        str(hp["num_components"]),
+        "--pi0",
+        str(hp["pi0"]),
+        "--init-sigma",
+        str(hp["init_sigma"]),
+        "--merge-kl-thresh",
+        str(hp["merge_kl_thresh"]),
+        "--lr-w",
+        str(hp["lr_w"]),
+        "--lr-theta-means",
+        str(hp["lr_theta_means"]),
+        "--lr-theta-gammas",
+        str(hp["lr_theta_gammas"]),
+        "--lr-theta-rhos",
+        str(hp["lr_theta_rhos"]),
+        "--tau",
+        str(hp["tau"]),
+        "--gamma-alpha",
+        str(hp["gamma_alpha"]),
+        "--gamma-beta",
+        str(hp["gamma_beta"]),
+        "--gamma-alpha-zero",
+        str(hp["gamma_alpha_zero"]),
+        "--gamma-beta-zero",
+        str(hp["gamma_beta_zero"]),
+        "--tau-warmup-epochs",
+        str(hp["tau_warmup_epochs"]),
+        "--complexity-mode",
+        hp["complexity_mode"],
+        "--weight-decay",
+        str(hp["weight_decay"]),
+        "--quant-assign",
+        hp["quant_assign"],
+        "--pbits-fc",
+        str(hp["pbits_fc"]),
+        "--pbits-conv",
+        str(hp["pbits_conv"]),
     ]
 
     if args.no_huffman:
@@ -115,19 +165,37 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--preset", required=True, choices=["lenet_300_100", "lenet5", "wrn_16_4"])
+    ap.add_argument(
+        "--preset", required=True, choices=["lenet_300_100", "lenet5", "wrn_16_4"]
+    )
     ap.add_argument("--n-trials", type=int, default=20)
     ap.add_argument("--study-name", type=str, default=None)
-    ap.add_argument("--storage", type=str, default=None, help="e.g., sqlite:///sws_optuna.db")
+    ap.add_argument(
+        "--storage", type=str, default=None, help="e.g., sqlite:///sws_optuna.db"
+    )
     ap.add_argument("--sampler", choices=["tpe", "botorch"], default="tpe")
     ap.add_argument("--save-dir", type=str, default="runs")
-    ap.add_argument("--max-acc-drop", type=float, default=0.5,
-                    help="Max allowed accuracy drop (percentage points) after quantization.")
-    ap.add_argument("--penalty", type=float, default=25.0,
-                    help="Quadratic penalty weight for violating max-acc-drop.")
-    ap.add_argument("--timeout-sec", type=int, default=None,
-                    help="Per-trial timeout (seconds). None = no timeout.")
-    ap.add_argument("--keep-failed", action="store_true", help="Do not delete failed trial folders.")
+    ap.add_argument(
+        "--max-acc-drop",
+        type=float,
+        default=0.5,
+        help="Max allowed accuracy drop (percentage points) after quantization.",
+    )
+    ap.add_argument(
+        "--penalty",
+        type=float,
+        default=25.0,
+        help="Quadratic penalty weight for violating max-acc-drop.",
+    )
+    ap.add_argument(
+        "--timeout-sec",
+        type=int,
+        default=None,
+        help="Per-trial timeout (seconds). None = no timeout.",
+    )
+    ap.add_argument(
+        "--keep-failed", action="store_true", help="Do not delete failed trial folders."
+    )
     ap.add_argument("--no-huffman", action="store_true")
     ap.add_argument("--quant-skip-last", action="store_true")
     ap.add_argument("--allow-pbits", action="store_true")
@@ -137,17 +205,29 @@ def main():
     # Execution/perf knobs:
     ap.add_argument("--batch-size", type=int, default=128)
     ap.add_argument("--num-workers", type=int, default=2)
-    ap.add_argument("--pretrain-epochs", type=int, default=None,
-                    help="If None, falls back to preset default inside run_sws.py")
-    ap.add_argument("--retrain-epochs", type=int, default=None,
-                    help="If None, falls back to preset default inside run_sws.py")
-    ap.add_argument("--lr-pre", type=float, default=1e-3)
+    ap.add_argument(
+        "--pretrain-epochs",
+        type=int,
+        default=None,
+        help="If None, falls back to preset default inside run_sws.py",
+    )
+    ap.add_argument(
+        "--retrain-epochs",
+        type=int,
+        default=None,
+        help="If None, falls back to preset default inside run_sws.py",
+    )
+    ap.add_argument("--lr-pre", type=float, default=5e-4)
     ap.add_argument("--optim-pre", choices=["adam", "sgd"], default="adam")
     ap.add_argument("--eval-every", type=int, default=1)
     ap.add_argument("--cr-every", type=int, default=0)
     ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--load-pretrained", type=str, default=None,
-                    help="Path to a pre-trained checkpoint to skip pretraining each trial.")
+    ap.add_argument(
+        "--load-pretrained",
+        type=str,
+        default=None,
+        help="Path to a pre-trained checkpoint to skip pretraining each trial.",
+    )
 
     args = ap.parse_args()
 
@@ -161,15 +241,23 @@ def main():
         try:
             from optuna.integration import BoTorchSampler
         except Exception as e:
-            raise RuntimeError("BoTorchSampler requires botorch & gpytorch installed.") from e
+            raise RuntimeError(
+                "BoTorchSampler requires botorch & gpytorch installed."
+            ) from e
         sampler = BoTorchSampler(seed=args.seed)
 
     if args.storage:
-        study = optuna.create_study(study_name=study_name, direction="maximize",
-                                    sampler=sampler, storage=args.storage, load_if_exists=True)
+        study = optuna.create_study(
+            study_name=study_name,
+            direction="maximize",
+            sampler=sampler,
+            storage=args.storage,
+            load_if_exists=True,
+        )
     else:
-        study = optuna.create_study(study_name=study_name, direction="maximize",
-                                    sampler=sampler)
+        study = optuna.create_study(
+            study_name=study_name, direction="maximize", sampler=sampler
+        )
 
     base_runs = Path(args.save_dir)
     base_runs.mkdir(parents=True, exist_ok=True)
@@ -182,7 +270,9 @@ def main():
         try:
             proc = subprocess.run(
                 cmd,
-                cwd=str(Path(__file__).resolve().parents[1]),  # repo root (where run_sws.py lives)
+                cwd=str(
+                    Path(__file__).resolve().parents[1]
+                ),  # repo root (where run_sws.py lives)
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -193,7 +283,9 @@ def main():
             (run_dir / "stderr.txt").write_text(proc.stderr)
 
             if proc.returncode != 0:
-                raise RuntimeError(f"run_sws.py failed (code {proc.returncode}). See stderr.txt")
+                raise RuntimeError(
+                    f"run_sws.py failed (code {proc.returncode}). See stderr.txt"
+                )
 
             summary = _read_summary(run_dir)
             acc_pre = float(summary["acc_pretrain"])
@@ -234,8 +326,10 @@ def main():
     print("\n=== Best Trial ===")
     print(f"Trial #{best.number}")
     print(f"Score (objective): {best.value:.6f}")
-    print(f"CR: {best.user_attrs.get('CR')} | acc_pre: {best.user_attrs.get('acc_pre')} "
-          f"| acc_post: {best.user_attrs.get('acc_post')} | drop_pp: {best.user_attrs.get('acc_drop_pp')}")
+    print(
+        f"CR: {best.user_attrs.get('CR')} | acc_pre: {best.user_attrs.get('acc_pre')} "
+        f"| acc_post: {best.user_attrs.get('acc_post')} | drop_pp: {best.user_attrs.get('acc_drop_pp')}"
+    )
     print("Params:")
     for k, v in best.params.items():
         print(f"  {k}: {v}")
@@ -244,4 +338,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

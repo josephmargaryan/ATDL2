@@ -1,0 +1,204 @@
+[
+  {
+    "layer": "conv1(Conv2d)",
+    "shape": [
+      16,
+      3,
+      3,
+      3
+    ],
+    "total": 432,
+    "nnz": 420,
+    "sparsity_pct": 2.777777777777779
+  },
+  {
+    "layer": "block1.net.0.conv1(Conv2d)",
+    "shape": [
+      64,
+      16,
+      3,
+      3
+    ],
+    "total": 9216,
+    "nnz": 3262,
+    "sparsity_pct": 64.60503472222221
+  },
+  {
+    "layer": "block1.net.0.conv2(Conv2d)",
+    "shape": [
+      64,
+      64,
+      3,
+      3
+    ],
+    "total": 36864,
+    "nnz": 9704,
+    "sparsity_pct": 73.67621527777779
+  },
+  {
+    "layer": "block1.net.0.shortcut(Conv2d)",
+    "shape": [
+      64,
+      16,
+      1,
+      1
+    ],
+    "total": 1024,
+    "nnz": 777,
+    "sparsity_pct": 24.12109375
+  },
+  {
+    "layer": "block1.net.1.conv1(Conv2d)",
+    "shape": [
+      64,
+      64,
+      3,
+      3
+    ],
+    "total": 36864,
+    "nnz": 6011,
+    "sparsity_pct": 83.69411892361111
+  },
+  {
+    "layer": "block1.net.1.conv2(Conv2d)",
+    "shape": [
+      64,
+      64,
+      3,
+      3
+    ],
+    "total": 36864,
+    "nnz": 9276,
+    "sparsity_pct": 74.83723958333333
+  },
+  {
+    "layer": "block2.net.0.conv1(Conv2d)",
+    "shape": [
+      128,
+      64,
+      3,
+      3
+    ],
+    "total": 73728,
+    "nnz": 18230,
+    "sparsity_pct": 75.27398003472221
+  },
+  {
+    "layer": "block2.net.0.conv2(Conv2d)",
+    "shape": [
+      128,
+      128,
+      3,
+      3
+    ],
+    "total": 147456,
+    "nnz": 35493,
+    "sparsity_pct": 75.92976888020834
+  },
+  {
+    "layer": "block2.net.0.shortcut(Conv2d)",
+    "shape": [
+      128,
+      64,
+      1,
+      1
+    ],
+    "total": 8192,
+    "nnz": 3962,
+    "sparsity_pct": 51.6357421875
+  },
+  {
+    "layer": "block2.net.1.conv1(Conv2d)",
+    "shape": [
+      128,
+      128,
+      3,
+      3
+    ],
+    "total": 147456,
+    "nnz": 30133,
+    "sparsity_pct": 79.56475151909721
+  },
+  {
+    "layer": "block2.net.1.conv2(Conv2d)",
+    "shape": [
+      128,
+      128,
+      3,
+      3
+    ],
+    "total": 147456,
+    "nnz": 29377,
+    "sparsity_pct": 80.07744683159721
+  },
+  {
+    "layer": "block3.net.0.conv1(Conv2d)",
+    "shape": [
+      256,
+      128,
+      3,
+      3
+    ],
+    "total": 294912,
+    "nnz": 36128,
+    "sparsity_pct": 87.74956597222221
+  },
+  {
+    "layer": "block3.net.0.conv2(Conv2d)",
+    "shape": [
+      256,
+      256,
+      3,
+      3
+    ],
+    "total": 589824,
+    "nnz": 26321,
+    "sparsity_pct": 95.53748236762154
+  },
+  {
+    "layer": "block3.net.0.shortcut(Conv2d)",
+    "shape": [
+      256,
+      128,
+      1,
+      1
+    ],
+    "total": 32768,
+    "nnz": 3509,
+    "sparsity_pct": 89.2913818359375
+  },
+  {
+    "layer": "block3.net.1.conv1(Conv2d)",
+    "shape": [
+      256,
+      256,
+      3,
+      3
+    ],
+    "total": 589824,
+    "nnz": 8217,
+    "sparsity_pct": 98.60687255859375
+  },
+  {
+    "layer": "block3.net.1.conv2(Conv2d)",
+    "shape": [
+      256,
+      256,
+      3,
+      3
+    ],
+    "total": 589824,
+    "nnz": 4885,
+    "sparsity_pct": 99.17178683810764
+  },
+  {
+    "layer": "fc(Linear)",
+    "shape": [
+      10,
+      256
+    ],
+    "total": 2560,
+    "nnz": 871,
+    "sparsity_pct": 65.9765625
+  }
+]
