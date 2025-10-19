@@ -7,7 +7,7 @@
   "pretrain_epochs": 0,
   "lr_pre": 0.001,
   "optim_pre": "adam",
-  "load_pretrained": "./runs/baseline_wrn16/cifar10_wrn_16_4_pre.pt",
+  "load_pretrained": "cifar10_wrn_16_4_pre.pt",
   "retrain_epochs": 40,
   "lr_w": 0.001,
   "lr_theta_means": 0.0003,

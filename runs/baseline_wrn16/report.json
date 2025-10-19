@@ -1,8 +1,8 @@
 {
   "orig_bits": 87848448,
-  "compressed_bits": 1309865,
-  "CR": 67.06679543311715,
-  "nnz": 237996,
+  "compressed_bits": 862656,
+  "CR": 101.83485421767193,
+  "nnz": 106503,
   "layers": [
     {
       "layer": "Conv2d",
@@ -14,10 +14,10 @@
       ],
       "orig_bits": 13824,
       "bits_IR": 153,
-      "bits_IC": 181,
-      "bits_A": 1854,
+      "bits_IC": 448,
+      "bits_A": 1052,
       "bits_codebook": 2016,
-      "nnz": 418,
+      "nnz": 271,
       "passthrough": false
     },
     {
@@ -30,42 +30,10 @@
       ],
       "orig_bits": 294912,
       "bits_IR": 780,
-      "bits_IC": 2268,
-      "bits_A": 13278,
+      "bits_IC": 8850,
+      "bits_A": 11461,
       "bits_codebook": 2016,
-      "nnz": 3387,
-      "passthrough": false
-    },
-    {
-      "layer": "Conv2d",
-      "shape": [
-        64,
-        64,
-        3,
-        3
-      ],
-      "orig_bits": 1179648,
-      "bits_IR": 910,
-      "bits_IC": 14009,
-      "bits_A": 38619,
-      "bits_codebook": 2016,
-      "nnz": 10112,
-      "passthrough": false
-    },
-    {
-      "layer": "Conv2d",
-      "shape": [
-        64,
-        16,
-        1,
-        1
-      ],
-      "orig_bits": 32768,
-      "bits_IR": 650,
-      "bits_IC": 485,
-      "bits_A": 3306,
-      "bits_codebook": 2016,
-      "nnz": 795,
+      "nnz": 3444,
       "passthrough": false
     },
     {
@@ -78,10 +46,26 @@
       ],
       "orig_bits": 1179648,
       "bits_IR": 845,
-      "bits_IC": 7954,
-      "bits_A": 24976,
+      "bits_IC": 23886,
+      "bits_A": 18459,
       "bits_codebook": 2016,
-      "nnz": 6416,
+      "nnz": 6196,
+      "passthrough": false
+    },
+    {
+      "layer": "Conv2d",
+      "shape": [
+        64,
+        16,
+        1,
+        1
+      ],
+      "orig_bits": 32768,
+      "bits_IR": 650,
+      "bits_IC": 1072,
+      "bits_A": 2792,
+      "bits_codebook": 2016,
+      "nnz": 674,
       "passthrough": false
     },
     {
@@ -93,11 +77,27 @@
         3
       ],
       "orig_bits": 1179648,
-      "bits_IR": 910,
-      "bits_IC": 12319,
-      "bits_A": 36172,
+      "bits_IR": 845,
+      "bits_IC": 24495,
+      "bits_A": 19970,
       "bits_codebook": 2016,
-      "nnz": 9463,
+      "nnz": 6479,
+      "passthrough": false
+    },
+    {
+      "layer": "Conv2d",
+      "shape": [
+        64,
+        64,
+        3,
+        3
+      ],
+      "orig_bits": 1179648,
+      "bits_IR": 845,
+      "bits_IC": 24928,
+      "bits_A": 21453,
+      "bits_codebook": 2016,
+      "nnz": 6831,
       "passthrough": false
     },
     {
@@ -109,11 +109,11 @@
         3
       ],
       "orig_bits": 2359296,
-      "bits_IR": 1935,
-      "bits_IC": 19740,
-      "bits_A": 72828,
+      "bits_IR": 1806,
+      "bits_IC": 43069,
+      "bits_A": 34256,
       "bits_codebook": 2016,
-      "nnz": 19001,
+      "nnz": 11092,
       "passthrough": false
     },
     {
@@ -125,11 +125,11 @@
         3
       ],
       "orig_bits": 4718592,
-      "bits_IR": 2064,
-      "bits_IC": 56576,
-      "bits_A": 152532,
+      "bits_IR": 1806,
+      "bits_IC": 63464,
+      "bits_A": 40022,
       "bits_codebook": 2016,
-      "nnz": 40046,
+      "nnz": 13626,
       "passthrough": false
     },
     {
@@ -141,11 +141,11 @@
         1
       ],
       "orig_bits": 262144,
-      "bits_IR": 1677,
-      "bits_IC": 6836,
-      "bits_A": 15884,
+      "bits_IR": 1548,
+      "bits_IC": 7475,
+      "bits_A": 9327,
       "bits_codebook": 2016,
-      "nnz": 4217,
+      "nnz": 2631,
       "passthrough": false
     },
     {
@@ -157,11 +157,11 @@
         3
       ],
       "orig_bits": 4718592,
-      "bits_IR": 1935,
-      "bits_IC": 34088,
-      "bits_A": 104870,
+      "bits_IR": 1806,
+      "bits_IC": 62310,
+      "bits_A": 40415,
       "bits_codebook": 2016,
-      "nnz": 27536,
+      "nnz": 13410,
       "passthrough": false
     },
     {
@@ -173,11 +173,11 @@
         3
       ],
       "orig_bits": 4718592,
-      "bits_IR": 1935,
-      "bits_IC": 47944,
-      "bits_A": 123469,
+      "bits_IR": 1806,
+      "bits_IC": 61416,
+      "bits_A": 41745,
       "bits_codebook": 2016,
-      "nnz": 32484,
+      "nnz": 13663,
       "passthrough": false
     },
     {
@@ -189,11 +189,11 @@
         3
       ],
       "orig_bits": 9437184,
-      "bits_IR": 4112,
-      "bits_IC": 52049,
-      "bits_A": 151853,
+      "bits_IR": 3598,
+      "bits_IC": 75787,
+      "bits_A": 43640,
       "bits_codebook": 2016,
-      "nnz": 40506,
+      "nnz": 14815,
       "passthrough": false
     },
     {
@@ -205,11 +205,11 @@
         3
       ],
       "orig_bits": 18874368,
-      "bits_IR": 3855,
-      "bits_IC": 44347,
-      "bits_A": 100609,
+      "bits_IR": 3341,
+      "bits_IC": 48226,
+      "bits_A": 21209,
       "bits_codebook": 2016,
-      "nnz": 26462,
+      "nnz": 7291,
       "passthrough": false
     },
     {
@@ -221,11 +221,27 @@
         1
       ],
       "orig_bits": 1048576,
+      "bits_IR": 2827,
+      "bits_IC": 9034,
+      "bits_A": 5446,
+      "bits_codebook": 2016,
+      "nnz": 1673,
+      "passthrough": false
+    },
+    {
+      "layer": "Conv2d",
+      "shape": [
+        256,
+        256,
+        3,
+        3
+      ],
+      "orig_bits": 18874368,
       "bits_IR": 3084,
-      "bits_IC": 8023,
-      "bits_A": 14686,
+      "bits_IC": 16086,
+      "bits_A": 7400,
       "bits_codebook": 2016,
-      "nnz": 3861,
+      "nnz": 2560,
       "passthrough": false
     },
     {
@@ -237,27 +253,11 @@
         3
       ],
       "orig_bits": 18874368,
-      "bits_IR": 3341,
-      "bits_IC": 13827,
-      "bits_A": 29596,
+      "bits_IR": 2313,
+      "bits_IC": 2456,
+      "bits_A": 949,
       "bits_codebook": 2016,
-      "nnz": 7721,
-      "passthrough": false
-    },
-    {
-      "layer": "Conv2d",
-      "shape": [
-        256,
-        256,
-        3,
-        3
-      ],
-      "orig_bits": 18874368,
-      "bits_IR": 3341,
-      "bits_IC": 13948,
-      "bits_A": 19220,
-      "bits_codebook": 2016,
-      "nnz": 4765,
+      "nnz": 395,
       "passthrough": false
     },
     {
@@ -267,11 +267,11 @@
         256
       ],
       "orig_bits": 81920,
-      "bits_IR": 110,
-      "bits_IC": 2215,
-      "bits_A": 3395,
+      "bits_IR": 121,
+      "bits_IC": 2560,
+      "bits_A": 5052,
       "bits_codebook": 2016,
-      "nnz": 806,
+      "nnz": 1452,
       "passthrough": false
     }
   ]
