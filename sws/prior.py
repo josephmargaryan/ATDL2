@@ -191,7 +191,9 @@ class MixturePrior(nn.Module):
             self.pi_logits.data = torch.log(pi1 + 1e-12)
 
     @torch.no_grad()
-    def quantize_model(self, model, *, skip_last_matrix: bool = True, assign: str = "ml"):
+    def quantize_model(
+        self, model, *, skip_last_matrix: bool = True, assign: str = "ml"
+    ):
         """
         Hard-quantize weights to mixture means.
 
@@ -201,9 +203,10 @@ class MixturePrior(nn.Module):
                 This avoids a strong bias towards the zero spike during snapping.
         """
         import torch.nn as nn
+
         mu, sigma2, pi = self.mixture_params()
         log_pi = torch.log(pi + self.eps)
-        const  = -0.5 * torch.log(2 * math.pi * sigma2)
+        const = -0.5 * torch.log(2 * math.pi * sigma2)
         inv_s2 = 1.0 / sigma2
 
         # collect weights in order
@@ -223,13 +226,16 @@ class MixturePrior(nn.Module):
 
             if assign == "map":
                 # MAP: includes mixing proportions (π)
-                scores = (log_pi.unsqueeze(0)
-                        + const.unsqueeze(0)
-                        - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0)))
+                scores = (
+                    log_pi.unsqueeze(0)
+                    + const.unsqueeze(0)
+                    - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0))
+                )
             elif assign == "ml":
                 # ML: ignore π, keep per-component likelihood (equal mixing)
-                scores = (const.unsqueeze(0)
-                        - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0)))
+                scores = const.unsqueeze(0) - 0.5 * (
+                    (w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0)
+                )
             else:
                 raise ValueError(f"Unknown assign mode: {assign}")
 

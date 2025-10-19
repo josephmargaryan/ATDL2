@@ -42,6 +42,7 @@ class TutorialNet(nn.Module):
     - Flatten -> Linear(1250->500) + ReLU
     - Linear(500->10)
     """
+
     def __init__(self, num_classes=10):
         super().__init__()
         self.conv1 = nn.Conv2d(1, 25, kernel_size=5, stride=2)

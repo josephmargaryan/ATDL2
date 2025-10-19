@@ -20,6 +20,7 @@ def layerwise_pruning_stats(model):
     stats = []
     for name, m in model.named_modules():
         import torch.nn as nn
+
         if isinstance(m, (nn.Linear, nn.Conv2d)):
             W = m.weight.data
             total = W.numel()
@@ -59,10 +60,10 @@ def apply_preset(args):
         set_if_missing("init_sigma", 0.25)
         set_if_missing("merge_kl_thresh", 1e-10)
         # Keras-matching learning rates: [5e-4, 1e-4, 3e-3, 3e-3]
-        set_if_missing("lr_w", 5e-4)              # Network weights
-        set_if_missing("lr_theta_means", 1e-4)    # Mixture means (slower)
-        set_if_missing("lr_theta_gammas", 3e-3)   # Variances (FAST!)
-        set_if_missing("lr_theta_rhos", 3e-3)     # Mixing proportions
+        set_if_missing("lr_w", 5e-4)  # Network weights
+        set_if_missing("lr_theta_means", 1e-4)  # Mixture means (slower)
+        set_if_missing("lr_theta_gammas", 3e-3)  # Variances (FAST!)
+        set_if_missing("lr_theta_rhos", 3e-3)  # Mixing proportions
         set_if_missing("complexity_mode", "epoch")
         set_if_missing("tau_warmup_epochs", 10)
         set_if_missing("log_mixture_every", 1)
@@ -159,12 +160,18 @@ def _auto_calibrate_tau(
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dataset", choices=["mnist", "cifar10", "cifar100"], required=False)
-    ap.add_argument("--model", choices=["lenet_300_100", "lenet5", "wrn_16_4"], required=False)
+    ap.add_argument(
+        "--dataset", choices=["mnist", "cifar10", "cifar100"], required=False
+    )
+    ap.add_argument(
+        "--model", choices=["lenet_300_100", "lenet5", "wrn_16_4"], required=False
+    )
     ap.add_argument("--batch-size", type=int, default=128)
     ap.add_argument("--num-workers", type=int, default=2)
 
-    ap.add_argument("--preset", choices=["lenet_300_100", "lenet5", "wrn_16_4"], default=None)
+    ap.add_argument(
+        "--preset", choices=["lenet_300_100", "lenet5", "wrn_16_4"], default=None
+    )
 
     # Pretrain
     ap.add_argument("--pretrain-epochs", type=int, default=None)
@@ -206,6 +213,13 @@ def main():
     ap.add_argument("--beta-alpha", type=float, default=None)
     ap.add_argument("--beta-beta", type=float, default=None)
 
+    # NEW: disable all hyperpriors
+    ap.add_argument(
+        "--no-hyperpriors",
+        action="store_true",
+        help="Disable Gamma/Beta hyperpriors in the mixture prior.",
+    )
+
     # Logging
     ap.add_argument("--run-name", type=str, default=None)
     ap.add_argument("--save-dir", type=str, default="runs")
@@ -220,17 +234,30 @@ def main():
     ap.add_argument("--pbits-conv", type=int, default=8)
 
     # Quantization options
-    ap.add_argument("--quant-skip-last", action="store_true",
-                    help="Skip quantizing the last 2D weight (classifier).")
-    ap.add_argument("--quant-assign", choices=["map", "ml"], default="ml",
-                    help="Assignment rule for quantization and CR (default: ml).")
+    ap.add_argument(
+        "--quant-skip-last",
+        action="store_true",
+        help="Skip quantizing the last 2D weight (classifier).",
+    )
+    ap.add_argument(
+        "--quant-assign",
+        choices=["map", "ml"],
+        default="ml",
+        help="Assignment rule for quantization and CR (default: ml).",
+    )
 
-    # --- NEW: GIF options
-    ap.add_argument("--make-gif", action="store_true",
-                    help="Generate a retraining GIF (weight scatter + mixture bands).")
+    # GIF options
+    ap.add_argument(
+        "--make-gif",
+        action="store_true",
+        help="Generate a retraining GIF (weight scatter + mixture bands).",
+    )
     ap.add_argument("--gif-fps", type=int, default=2)
-    ap.add_argument("--gif-keep-frames", action="store_true",
-                    help="Keep temporary frame images after GIF creation (default: remove).")
+    ap.add_argument(
+        "--gif-keep-frames",
+        action="store_true",
+        help="Keep temporary frame images after GIF creation (default: remove).",
+    )
 
     args = ap.parse_args()
     args = apply_preset(args)
@@ -238,7 +265,9 @@ def main():
     set_seed(args.seed)
     device = get_device()
 
-    run_name = args.run_name or f"{args.dataset}_{args.model}_{time.strftime('%Y%m%d_%H%M%S')}"
+    run_name = (
+        args.run_name or f"{args.dataset}_{args.model}_{time.strftime('%Y%m%d_%H%M%S')}"
+    )
     run_dir = os.path.join(args.save_dir, run_name)
     os.makedirs(run_dir, exist_ok=True)
 
@@ -247,7 +276,7 @@ def main():
     with open(os.path.join(run_dir, "env.json"), "w") as f:
         json.dump(collect_env(), f, indent=2)
 
-    # --- NEW: construct visualizer if requested
+    # Visualizer if requested
     viz = None
     if args.make_gif:
         viz = TrainingGifVisualizer(
@@ -328,6 +357,15 @@ def main():
     if args.beta_beta is not None:
         prior.beta_beta = args.beta_beta
 
+    # Disable all hyperpriors if requested
+    if getattr(args, "no_hyperpriors", False):
+        prior.gamma_alpha = None
+        prior.gamma_beta = None
+        prior.gamma_alpha0 = None
+        prior.gamma_beta0 = None
+        prior.beta_alpha = None
+        prior.beta_beta = None
+
     # Ensure prior is on the same device
     prior.to(device)
 
@@ -399,7 +437,9 @@ def main():
 
     # Merge + Quantize
     prior.merge_components(kl_threshold=args.merge_kl_thresh)
-    prior.quantize_model(model, skip_last_matrix=args.quant_skip_last, assign=args.quant_assign)
+    prior.quantize_model(
+        model, skip_last_matrix=args.quant_skip_last, assign=args.quant_assign
+    )
     q_acc = evaluate(model, test_loader, device)
     print(f"[Quantized] test acc: {q_acc:.4f}")
     quant_ckpt = os.path.join(run_dir, f"{args.dataset}_{args.model}_quantized.pt")

@@ -22,7 +22,9 @@ def evaluate(model: nn.Module, loader, device) -> float:
     return correct / total
 
 
-def _make_optimizer(model, prior, lr_w, lr_theta_means, lr_theta_gammas, lr_theta_rhos, weight_decay):
+def _make_optimizer(
+    model, prior, lr_w, lr_theta_means, lr_theta_gammas, lr_theta_rhos, weight_decay
+):
     """
     Create optimizer with 4 parameter groups matching Keras implementation:
     - Network weights: lr_w
@@ -37,7 +39,10 @@ def _make_optimizer(model, prior, lr_w, lr_theta_means, lr_theta_gammas, lr_thet
 
     # Separate mixture params by type (matching Keras' custom optimizer)
     means_params = [prior.mu]  # Learnable means (J-1 components)
-    gammas_params = [prior.log_sigma2, prior.log_sigma2_0]  # Log-variances (all J components)
+    gammas_params = [
+        prior.log_sigma2,
+        prior.log_sigma2_0,
+    ]  # Log-variances (all J components)
     rhos_params = [prior.pi_logits]  # Mixing proportion logits (J-1 components)
 
     return torch.optim.Adam(
@@ -170,7 +175,9 @@ def retrain_soft_weight_sharing(
     model.to(device)
     prior.to(device)
 
-    opt = _make_optimizer(model, prior, lr_w, lr_theta_means, lr_theta_gammas, lr_theta_rhos, weight_decay)
+    opt = _make_optimizer(
+        model, prior, lr_w, lr_theta_means, lr_theta_gammas, lr_theta_rhos, weight_decay
+    )
     criterion = nn.CrossEntropyLoss()
 
     # --- Optional: epoch 0 visual frame & baseline accuracy
@@ -180,7 +187,9 @@ def retrain_soft_weight_sharing(
         viz.on_epoch_end(0, model, prior, test_acc=last_test_acc)
 
     num_batches = max(1, len(train_loader))
-    dataset_size = len(train_loader.dataset)  # Get total dataset size for proper normalization
+    dataset_size = len(
+        train_loader.dataset
+    )  # Get total dataset size for proper normalization
     t0 = time.time()
 
     # ---- Snapshot mixture at "epoch 0"
@@ -264,7 +273,9 @@ def retrain_soft_weight_sharing(
         # ---- Log mixture (every epoch when mixture_every==1)
         if mixture_every and run_dir and ((ep % mixture_every) == 0):
             mixture_dir = os.path.join(run_dir, "mixture_epochs")
-            with open(os.path.join(mixture_dir, f"mixture_epoch_{ep:03d}.json"), "w") as f:
+            with open(
+                os.path.join(mixture_dir, f"mixture_epoch_{ep:03d}.json"), "w"
+            ) as f:
                 json.dump(prior.snapshot(), f, indent=2)
 
         print(

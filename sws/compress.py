@@ -116,7 +116,9 @@ def compression_report(
     layers = []
 
     # collect compressible modules
-    layers_mod = [m for m in model.modules() if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d))]
+    layers_mod = [
+        m for m in model.modules() if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d))
+    ]
     last2d = len(layers_mod) - 1 if layers_mod else -1
 
     for li, m in enumerate(layers_mod):
@@ -145,12 +147,15 @@ def compression_report(
         # mixture assignment
         w = W.view(-1, 1)
         if assign_mode == "map":
-            scores = (log_pi.unsqueeze(0)
-                      + const.unsqueeze(0)
-                      - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0)))
+            scores = (
+                log_pi.unsqueeze(0)
+                + const.unsqueeze(0)
+                - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0))
+            )
         elif assign_mode == "ml":
-            scores = (const.unsqueeze(0)
-                      - 0.5 * ((w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0)))
+            scores = const.unsqueeze(0) - 0.5 * (
+                (w - mu.unsqueeze(0)) ** 2 * inv_s2.unsqueeze(0)
+            )
         else:
             raise ValueError(f"Unknown assign_mode: {assign_mode}")
 

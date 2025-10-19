@@ -14,9 +14,13 @@ def main():
     # Ensure figures directory exists
     os.makedirs(os.path.join(args.run_dir, "figures"), exist_ok=True)
 
-    files = sorted(glob.glob(os.path.join(args.run_dir, "mixture_epochs", "mixture_epoch_*.json")))
+    files = sorted(
+        glob.glob(os.path.join(args.run_dir, "mixture_epochs", "mixture_epoch_*.json"))
+    )
     if not files:
-        print("No mixture_epoch_*.json found in mixture_epochs/. Re-run with --log-mixture-every 1.")
+        print(
+            "No mixture_epoch_*.json found in mixture_epochs/. Re-run with --log-mixture-every 1."
+        )
         return
 
     mus, sigmas = [], []
@@ -25,14 +29,14 @@ def main():
     for fn in files:
         with open(fn, "r") as f:
             mix = json.load(f)
-        mu = np.array(mix["mu"], dtype=np.float64)       # shape [J]
+        mu = np.array(mix["mu"], dtype=np.float64)  # shape [J]
         s = np.sqrt(np.array(mix["sigma2"], dtype=np.float64))
         if ref_idx is None:
             ref_idx = np.argsort(mu)  # sort by mean once
         mus.append(mu[ref_idx])
         sigmas.append(s[ref_idx])
 
-    mus = np.stack(mus, axis=0)      # [T, J]
+    mus = np.stack(mus, axis=0)  # [T, J]
     sigmas = np.stack(sigmas, axis=0)
 
     T, K = mus.shape
