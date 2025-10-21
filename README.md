@@ -35,7 +35,7 @@ The method achieves significant compression rates (up to 64x) with minimal accur
 - Learning a mixture of Gaussians as a weight prior during training
 - Encouraging weights to cluster around mixture component means
 - Quantizing weights to these learned cluster centers
-- Exploiting sparsity through a "pruning spike" component at zero
+- Exploiting sparsity through a "zero spike" component that encourages weights to be zero
 
 ## Repository Structure
 
@@ -300,40 +300,9 @@ python scripts/tune_optuna_pareto_viz.py \
   --annotate
 ```
 
-### Early Stopping with Pruning
-
-Terminate unpromising trials early to save computation (requires `--cr-every > 0`):
-
-```bash
-python scripts/tune_optuna.py \
-  --preset wrn_16_4 \
-  --n-trials 100 \
-  --enable-pruning \
-  --pruning-warmup-steps 10 \
-  --pruning-warmup-trials 5 \
-  --cr-every 5 \
-  --retrain-epochs 40 \
-  --save-dir runs
-```
-
-### Combined Multi-Objective with Pruning
-
-```bash
-python scripts/tune_optuna.py \
-  --preset lenet5 \
-  --n-trials 100 \
-  --use-pareto \
-  --enable-pruning \
-  --cr-every 10 \
-  --save-dir runs
-```
-
 ### Key Options
 
 - `--use-pareto`: Enable multi-objective optimization (CR and accuracy)
-- `--enable-pruning`: Enable MedianPruner for early stopping
-- `--pruning-warmup-steps`: Epochs before pruning can occur (default: 10)
-- `--pruning-warmup-trials`: Trials to complete before pruning starts (default: 5)
 - `--sampler`: Choose TPE (default) or BoTorch sampler (single-objective only)
 - `--storage`: Optional SQLite database for persistent studies
 - `--load-pretrained`: Reuse pretrained checkpoint across trials for speed
@@ -359,10 +328,10 @@ Each run creates a timestamped directory under `--save-dir` containing:
 
 ## Key Implementation Details
 
-1. **Component 0 is the zero-spike:** μ₀ = 0, π₀ fixed to ~0.95-0.999 (encourages pruning)
+1. **Component 0 is the zero-spike:** μ₀ = 0, π₀ fixed to ~0.95-0.999 (encourages weight sparsity)
 2. **Quantization assignment modes:**
    - `ml` (maximum likelihood): Uses only per-component likelihood (recommended)
-   - `map` (maximum a posteriori): Includes mixing weights (may over-prune)
+   - `map` (maximum a posteriori): Includes mixing weights (may produce excessive sparsity)
 3. **Skip last layer:** `--quant-skip-last` prevents quantizing the final classifier (improves accuracy)
 4. **Complexity modes:**
    - `epoch`: Divides complexity by batch count (recommended)

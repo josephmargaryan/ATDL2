@@ -10,7 +10,6 @@
 
 import argparse
 import json
-import math
 import os
 import shutil
 import subprocess
@@ -21,7 +20,6 @@ from typing import Dict, Any, Tuple, Optional
 from uuid import uuid4
 
 import optuna
-import pandas as pd
 
 
 def _now_tag() -> str:
@@ -39,23 +37,6 @@ def _read_summary(run_dir: Path) -> Dict[str, Any]:
 def _acc_drop_pp(acc_pre: float, acc_post: float) -> float:
     # percentage points
     return (acc_pre - acc_post) * 100.0
-
-
-def _read_latest_cr(metrics_path: Path) -> Tuple[Optional[int], Optional[float]]:
-    """Read the latest CR value from metrics.csv for pruning."""
-    try:
-        df = pd.read_csv(metrics_path)
-        # Only look at retrain phase rows that have CR values
-        retrain_rows = df[df['phase'] == 'retrain']
-        if len(retrain_rows) > 0:
-            # Find rows with CR values (not NaN)
-            cr_rows = retrain_rows.dropna(subset=['CR'])
-            if len(cr_rows) > 0:
-                latest = cr_rows.iloc[-1]
-                return int(latest['epoch']), float(latest['CR'])
-    except Exception:
-        pass
-    return None, None
 
 
 def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
@@ -254,31 +235,6 @@ def main():
         help="Use multi-objective optimization for CR and accuracy (Pareto front).",
     )
 
-    # Early stopping pruning arguments
-    ap.add_argument(
-        "--enable-pruning",
-        action="store_true",
-        help="Enable early stopping of unpromising trials using MedianPruner.",
-    )
-    ap.add_argument(
-        "--pruning-warmup-steps",
-        type=int,
-        default=10,
-        help="Number of epochs before pruning can occur.",
-    )
-    ap.add_argument(
-        "--pruning-warmup-trials",
-        type=int,
-        default=5,
-        help="Number of trials to complete before pruning starts.",
-    )
-    ap.add_argument(
-        "--pruning-percentile",
-        type=int,
-        default=50,
-        help="Percentile for MedianPruner (default: 50 for median).",
-    )
-
     args = ap.parse_args()
 
     # Create study
@@ -303,23 +259,6 @@ def main():
             ) from e
         sampler = BoTorchSampler(seed=args.seed)
 
-    # Create pruner if enabled
-    pruner = None
-    if args.enable_pruning:
-        if args.pruning_percentile == 50:
-            # Use MedianPruner for 50th percentile (more efficient)
-            pruner = optuna.pruners.MedianPruner(
-                n_startup_trials=args.pruning_warmup_trials,
-                n_warmup_steps=args.pruning_warmup_steps
-            )
-        else:
-            # Use PercentilePruner for other percentiles
-            pruner = optuna.pruners.PercentilePruner(
-                percentile=args.pruning_percentile,
-                n_startup_trials=args.pruning_warmup_trials,
-                n_warmup_steps=args.pruning_warmup_steps
-            )
-
     # Create study with appropriate configuration
     if args.use_pareto:
         # Multi-objective: maximize both CR and accuracy
@@ -328,7 +267,6 @@ def main():
                 study_name=study_name,
                 directions=["maximize", "maximize"],  # [CR, accuracy]
                 sampler=sampler,
-                pruner=pruner,
                 storage=args.storage,
                 load_if_exists=True,
             )
@@ -337,7 +275,6 @@ def main():
                 study_name=study_name,
                 directions=["maximize", "maximize"],  # [CR, accuracy]
                 sampler=sampler,
-                pruner=pruner
             )
     else:
         # Single-objective: maximize penalized score
@@ -346,7 +283,6 @@ def main():
                 study_name=study_name,
                 direction="maximize",
                 sampler=sampler,
-                pruner=pruner,
                 storage=args.storage,
                 load_if_exists=True,
             )
@@ -355,7 +291,6 @@ def main():
                 study_name=study_name,
                 direction="maximize",
                 sampler=sampler,
-                pruner=pruner
             )
 
     base_runs = Path(args.save_dir)
@@ -367,77 +302,22 @@ def main():
 
         # Run a single experiment/trial
         try:
-            # Use Popen for monitoring if pruning is enabled
-            if args.enable_pruning and args.cr_every > 0:
-                # Start subprocess with monitoring
-                proc = subprocess.Popen(
-                    cmd,
-                    cwd=str(Path(__file__).resolve().parents[1]),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+            proc = subprocess.run(
+                cmd,
+                cwd=str(Path(__file__).resolve().parents[1]),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=args.timeout_sec,
+            )
+            # Keep full logs for debugging
+            (run_dir / "stdout.txt").write_text(proc.stdout)
+            (run_dir / "stderr.txt").write_text(proc.stderr)
+
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    f"run_sws.py failed (code {proc.returncode}). See stderr.txt"
                 )
-
-                # Monitor metrics.csv for intermediate values
-                metrics_path = run_dir / "metrics.csv"
-                last_reported_epoch = 0
-                timeout_counter = 0
-                max_timeout = args.timeout_sec if args.timeout_sec else 7200  # 2 hours default
-
-                stdout_lines = []
-                stderr_lines = []
-
-                while proc.poll() is None:  # While process is running
-                    # Check for intermediate CR values
-                    if metrics_path.exists():
-                        current_epoch, cr = _read_latest_cr(metrics_path)
-                        if current_epoch is not None and cr is not None:
-                            if current_epoch > last_reported_epoch:
-                                # Report intermediate value for pruning
-                                trial.report(cr, current_epoch)
-                                if trial.should_prune():
-                                    proc.terminate()
-                                    proc.wait(timeout=10)
-                                    (run_dir / "PRUNED.txt").write_text(
-                                        f"Pruned at epoch {current_epoch} with CR={cr}"
-                                    )
-                                    raise optuna.TrialPruned()
-                                last_reported_epoch = current_epoch
-
-                    time.sleep(5)  # Poll every 5 seconds
-                    timeout_counter += 5
-                    if timeout_counter > max_timeout:
-                        proc.terminate()
-                        proc.wait(timeout=10)
-                        raise TimeoutError(f"Trial exceeded {max_timeout}s")
-
-                # Process completed, get output
-                stdout, stderr = proc.communicate()
-                (run_dir / "stdout.txt").write_text(stdout)
-                (run_dir / "stderr.txt").write_text(stderr)
-
-                if proc.returncode != 0:
-                    raise RuntimeError(
-                        f"run_sws.py failed (code {proc.returncode}). See stderr.txt"
-                    )
-            else:
-                # Standard execution without pruning
-                proc = subprocess.run(
-                    cmd,
-                    cwd=str(Path(__file__).resolve().parents[1]),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    timeout=args.timeout_sec,
-                )
-                # Keep full logs for debugging
-                (run_dir / "stdout.txt").write_text(proc.stdout)
-                (run_dir / "stderr.txt").write_text(proc.stderr)
-
-                if proc.returncode != 0:
-                    raise RuntimeError(
-                        f"run_sws.py failed (code {proc.returncode}). See stderr.txt"
-                    )
 
             summary = _read_summary(run_dir)
             acc_pre = float(summary["acc_pretrain"])
@@ -465,9 +345,6 @@ def main():
                     score = cr - args.penalty * (drop_pp - args.max_acc_drop) ** 2
                 return score
 
-        except optuna.TrialPruned:
-            # Trial was pruned, let Optuna handle it
-            raise
         except Exception as e:
             # Mark as failed with a terrible score; optionally clean up
             (run_dir / "ERROR.txt").write_text(str(e))
