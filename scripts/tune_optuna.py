@@ -48,29 +48,28 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
     # ---- Sample the hyperparameters (Bayesian search space) ----
     # Choose ranges conservatively; feel free to widen for CIFAR.
     hp = {}
-    hp["tau"] = trial.suggest_float("tau", 5e-4, 5e-3, log=True)
-    hp["complexity_mode"] = trial.suggest_categorical("complexity_mode", ["epoch"])
-    hp["num_components"] = trial.suggest_categorical("num_components", [17])
+    hp["tau"] = trial.suggest_float("tau", 5e-4, 5e-2, log=True)
+    hp["complexity_mode"] = trial.suggest_categorical("complexity_mode", ["keras"])
+    hp["num_components"] = trial.suggest_categorical(
+        "num_components", [8, 17, 32, 49, 64, 91]
+    )
     hp["pi0"] = trial.suggest_float("pi0", 0.985, 0.999)
-    hp["init_sigma"] = trial.suggest_float("init_sigma", 0.05, 0.2, log=True)
     hp["lr_w"] = (
         args.lr_pre
         if args.lr_pre
-        else trial.suggest_float("lr_w", 1e-5, 1e-1, log=True)
+        else trial.suggest_float("lr_w", 1e-4, 1e-2, log=True)
     )
     hp["lr_theta_means"] = trial.suggest_float("lr_theta_means", 5e-5, 3e-4, log=True)
-    hp["lr_theta_gammas"] = trial.suggest_float("lr_theta_gammas", 5e-5, 3e-4, log=True)
-    hp["lr_theta_rhos"] = trial.suggest_float("lr_theta_rhos", 5e-5, 3e-4, log=True)
+    hp["lr_theta_gammas"] = trial.suggest_float("lr_theta_gammas", 5e-5, 3e-2, log=True)
+    hp["lr_theta_rhos"] = trial.suggest_float("lr_theta_rhos", 5e-5, 3e-2, log=True)
     hp["tau_warmup_epochs"] = 0
     hp["gamma_alpha"] = trial.suggest_float("gamma_alpha", 100, 1000)
-    hp["gamma_beta"] = trial.suggest_float("gamma_beta", 0.5, 15)
-    hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 50, 500)
-    hp["gamma_beta_zero"] = trial.suggest_float("gamma_beta_zero", 30, 100)
+    hp["gamma_beta"] = trial.suggest_float("gamma_beta", 0.01, 15)
+    hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 50, 1000)
+    hp["gamma_beta_zero"] = trial.suggest_float("gamma_beta_zero", 0, 10)
     hp["weight_decay"] = 0
-    hp["quant_assign"] = (
-        "ml"  # trial.suggest_categorical("quant_assign", ["map", "ml"])
-    )
-    hp["merge_kl_thresh"] = trial.suggest_float("merge_kl_thresh", 2e-3, 2e-2, log=True)
+    hp["quant_assign"] = "map"
+    hp["merge_kl_thresh"] = trial.suggest_float("merge_kl_thresh", 1e-5, 2e-2, log=True)
 
     # Optionally let users tune these too:
     if args.allow_pbits:

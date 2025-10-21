@@ -3,10 +3,11 @@ import json
 import matplotlib.pyplot as plt
 import glob
 import numpy as np
+import argparse
 
 
 def extract_metrics(folder_name, files, fields):
-    runs_path = os.path.join("runs", folder_name)
+    runs_path = os.path.join("runs/bayesian_optimization", folder_name)
 
     # Find all summary_paper_metrics.json files in the runs folder and subfolders
     patterns = [os.path.join(runs_path, "**", file_name) for file_name in files]
@@ -37,7 +38,10 @@ def extract_metrics(folder_name, files, fields):
 
 if __name__ == "__main__":
     # Example usage
-    folder_name = "bo_mnist_caffe"
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--run_dir", required=True)
+    args = ap.parse_args()
+
     hyperparams = [
         "tau",
         "pi0",
@@ -54,7 +58,7 @@ if __name__ == "__main__":
         "acc_quantized",
     ]
     metrics = extract_metrics(
-        folder_name, ["config.json", "summary_paper_metrics.json"], hyperparams
+        args.run_dir, ["config.json", "summary_paper_metrics.json"], hyperparams
     )
 
     for row in metrics.values():
