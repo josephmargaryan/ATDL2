@@ -4,3 +4,4 @@ tqdm
 numpy
 matplotlib
 pandas
+optuna

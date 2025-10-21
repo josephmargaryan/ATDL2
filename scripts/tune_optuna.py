@@ -17,10 +17,11 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 from uuid import uuid4
 
 import optuna
+import pandas as pd
 
 
 def _now_tag() -> str:
@@ -40,6 +41,23 @@ def _acc_drop_pp(acc_pre: float, acc_post: float) -> float:
     return (acc_pre - acc_post) * 100.0
 
 
+def _read_latest_cr(metrics_path: Path) -> Tuple[Optional[int], Optional[float]]:
+    """Read the latest CR value from metrics.csv for pruning."""
+    try:
+        df = pd.read_csv(metrics_path)
+        # Only look at retrain phase rows that have CR values
+        retrain_rows = df[df['phase'] == 'retrain']
+        if len(retrain_rows) > 0:
+            # Find rows with CR values (not NaN)
+            cr_rows = retrain_rows.dropna(subset=['CR'])
+            if len(cr_rows) > 0:
+                latest = cr_rows.iloc[-1]
+                return int(latest['epoch']), float(latest['CR'])
+    except Exception:
+        pass
+    return None, None
+
+
 def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
     """
     Construct the CLI for a single trial and choose the run directory.
@@ -54,6 +72,7 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
         "num_components", [8, 17, 32, 49, 64, 91]
     )
     hp["pi0"] = trial.suggest_float("pi0", 0.985, 0.999)
+    hp["init_sigma"] = trial.suggest_float("init_sigma", 0.05, 0.2, log=True)
     hp["lr_w"] = (
         args.lr_pre
         if args.lr_pre
@@ -228,11 +247,50 @@ def main():
         help="Path to a pre-trained checkpoint to skip pretraining each trial.",
     )
 
+    # Multi-objective optimization arguments
+    ap.add_argument(
+        "--use-pareto",
+        action="store_true",
+        help="Use multi-objective optimization for CR and accuracy (Pareto front).",
+    )
+
+    # Early stopping pruning arguments
+    ap.add_argument(
+        "--enable-pruning",
+        action="store_true",
+        help="Enable early stopping of unpromising trials using MedianPruner.",
+    )
+    ap.add_argument(
+        "--pruning-warmup-steps",
+        type=int,
+        default=10,
+        help="Number of epochs before pruning can occur.",
+    )
+    ap.add_argument(
+        "--pruning-warmup-trials",
+        type=int,
+        default=5,
+        help="Number of trials to complete before pruning starts.",
+    )
+    ap.add_argument(
+        "--pruning-percentile",
+        type=int,
+        default=50,
+        help="Percentile for MedianPruner (default: 50 for median).",
+    )
+
     args = ap.parse_args()
 
     # Create study
     study_name = args.study_name or f"sws_tune_{args.preset}_{_now_tag()}"
-    if args.sampler == "tpe":
+    if args.use_pareto:
+        study_name += "_pareto"
+
+    # Choose sampler based on mode
+    if args.use_pareto:
+        # Multi-objective optimization uses NSGA-II
+        sampler = optuna.samplers.NSGAIISampler(seed=args.seed)
+    elif args.sampler == "tpe":
         sampler = optuna.samplers.TPESampler(
             seed=args.seed, n_startup_trials=5, multivariate=True, group=True
         )
@@ -245,46 +303,141 @@ def main():
             ) from e
         sampler = BoTorchSampler(seed=args.seed)
 
-    if args.storage:
-        study = optuna.create_study(
-            study_name=study_name,
-            direction="maximize",
-            sampler=sampler,
-            storage=args.storage,
-            load_if_exists=True,
-        )
+    # Create pruner if enabled
+    pruner = None
+    if args.enable_pruning:
+        if args.pruning_percentile == 50:
+            # Use MedianPruner for 50th percentile (more efficient)
+            pruner = optuna.pruners.MedianPruner(
+                n_startup_trials=args.pruning_warmup_trials,
+                n_warmup_steps=args.pruning_warmup_steps
+            )
+        else:
+            # Use PercentilePruner for other percentiles
+            pruner = optuna.pruners.PercentilePruner(
+                percentile=args.pruning_percentile,
+                n_startup_trials=args.pruning_warmup_trials,
+                n_warmup_steps=args.pruning_warmup_steps
+            )
+
+    # Create study with appropriate configuration
+    if args.use_pareto:
+        # Multi-objective: maximize both CR and accuracy
+        if args.storage:
+            study = optuna.create_study(
+                study_name=study_name,
+                directions=["maximize", "maximize"],  # [CR, accuracy]
+                sampler=sampler,
+                pruner=pruner,
+                storage=args.storage,
+                load_if_exists=True,
+            )
+        else:
+            study = optuna.create_study(
+                study_name=study_name,
+                directions=["maximize", "maximize"],  # [CR, accuracy]
+                sampler=sampler,
+                pruner=pruner
+            )
     else:
-        study = optuna.create_study(
-            study_name=study_name, direction="maximize", sampler=sampler
-        )
+        # Single-objective: maximize penalized score
+        if args.storage:
+            study = optuna.create_study(
+                study_name=study_name,
+                direction="maximize",
+                sampler=sampler,
+                pruner=pruner,
+                storage=args.storage,
+                load_if_exists=True,
+            )
+        else:
+            study = optuna.create_study(
+                study_name=study_name,
+                direction="maximize",
+                sampler=sampler,
+                pruner=pruner
+            )
 
     base_runs = Path(args.save_dir)
     base_runs.mkdir(parents=True, exist_ok=True)
 
-    def objective(trial: optuna.trial.Trial) -> float:
+    def objective(trial: optuna.trial.Trial):
         run_name = f"{study_name}_t{trial.number}_{uuid4().hex[:6]}"
         cmd, run_dir = build_cmd(args, trial, run_name)
 
         # Run a single experiment/trial
         try:
-            proc = subprocess.run(
-                cmd,
-                cwd=str(
-                    Path(__file__).resolve().parents[1]
-                ),  # repo root (where run_sws.py lives)
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=args.timeout_sec,
-            )
-            # Keep full logs for debugging
-            (run_dir / "stdout.txt").write_text(proc.stdout)
-            (run_dir / "stderr.txt").write_text(proc.stderr)
-
-            if proc.returncode != 0:
-                raise RuntimeError(
-                    f"run_sws.py failed (code {proc.returncode}). See stderr.txt"
+            # Use Popen for monitoring if pruning is enabled
+            if args.enable_pruning and args.cr_every > 0:
+                # Start subprocess with monitoring
+                proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(Path(__file__).resolve().parents[1]),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
+
+                # Monitor metrics.csv for intermediate values
+                metrics_path = run_dir / "metrics.csv"
+                last_reported_epoch = 0
+                timeout_counter = 0
+                max_timeout = args.timeout_sec if args.timeout_sec else 7200  # 2 hours default
+
+                stdout_lines = []
+                stderr_lines = []
+
+                while proc.poll() is None:  # While process is running
+                    # Check for intermediate CR values
+                    if metrics_path.exists():
+                        current_epoch, cr = _read_latest_cr(metrics_path)
+                        if current_epoch is not None and cr is not None:
+                            if current_epoch > last_reported_epoch:
+                                # Report intermediate value for pruning
+                                trial.report(cr, current_epoch)
+                                if trial.should_prune():
+                                    proc.terminate()
+                                    proc.wait(timeout=10)
+                                    (run_dir / "PRUNED.txt").write_text(
+                                        f"Pruned at epoch {current_epoch} with CR={cr}"
+                                    )
+                                    raise optuna.TrialPruned()
+                                last_reported_epoch = current_epoch
+
+                    time.sleep(5)  # Poll every 5 seconds
+                    timeout_counter += 5
+                    if timeout_counter > max_timeout:
+                        proc.terminate()
+                        proc.wait(timeout=10)
+                        raise TimeoutError(f"Trial exceeded {max_timeout}s")
+
+                # Process completed, get output
+                stdout, stderr = proc.communicate()
+                (run_dir / "stdout.txt").write_text(stdout)
+                (run_dir / "stderr.txt").write_text(stderr)
+
+                if proc.returncode != 0:
+                    raise RuntimeError(
+                        f"run_sws.py failed (code {proc.returncode}). See stderr.txt"
+                    )
+            else:
+                # Standard execution without pruning
+                proc = subprocess.run(
+                    cmd,
+                    cwd=str(Path(__file__).resolve().parents[1]),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=args.timeout_sec,
+                )
+                # Keep full logs for debugging
+                (run_dir / "stdout.txt").write_text(proc.stdout)
+                (run_dir / "stderr.txt").write_text(proc.stderr)
+
+                if proc.returncode != 0:
+                    raise RuntimeError(
+                        f"run_sws.py failed (code {proc.returncode}). See stderr.txt"
+                    )
 
             summary = _read_summary(run_dir)
             acc_pre = float(summary["acc_pretrain"])
@@ -292,11 +445,6 @@ def main():
             cr = float(summary["CR"])
 
             drop_pp = _acc_drop_pp(acc_pre, acc_post)
-            # Hard-constraint via quadratic penalty
-            if drop_pp <= args.max_acc_drop:
-                score = cr
-            else:
-                score = cr - args.penalty * (drop_pp - args.max_acc_drop) ** 2
 
             # Attach user-facing trial attributes
             trial.set_user_attr("run_dir", str(run_dir))
@@ -305,8 +453,21 @@ def main():
             trial.set_user_attr("acc_post", acc_post)
             trial.set_user_attr("acc_drop_pp", drop_pp)
 
-            return score
+            if args.use_pareto:
+                # Multi-objective: return tuple (CR, accuracy)
+                return cr, acc_post
+            else:
+                # Single-objective: return penalized score
+                # Hard-constraint via quadratic penalty
+                if drop_pp <= args.max_acc_drop:
+                    score = cr
+                else:
+                    score = cr - args.penalty * (drop_pp - args.max_acc_drop) ** 2
+                return score
 
+        except optuna.TrialPruned:
+            # Trial was pruned, let Optuna handle it
+            raise
         except Exception as e:
             # Mark as failed with a terrible score; optionally clean up
             (run_dir / "ERROR.txt").write_text(str(e))
@@ -316,23 +477,63 @@ def main():
                 except Exception:
                     pass
             # Return a very low score so the sampler learns to avoid this region
-            return -1e9
+            if args.use_pareto:
+                return 0.0, 0.0  # Very bad CR and accuracy
+            else:
+                return -1e9
 
     study.optimize(objective, n_trials=args.n_trials, show_progress_bar=True)
 
-    # Print best
-    best = study.best_trial
-    print("\n=== Best Trial ===")
-    print(f"Trial #{best.number}")
-    print(f"Score (objective): {best.value:.6f}")
-    print(
-        f"CR: {best.user_attrs.get('CR')} | acc_pre: {best.user_attrs.get('acc_pre')} "
-        f"| acc_post: {best.user_attrs.get('acc_post')} | drop_pp: {best.user_attrs.get('acc_drop_pp')}"
-    )
-    print("Params:")
-    for k, v in best.params.items():
-        print(f"  {k}: {v}")
-    print(f"Run dir: {best.user_attrs.get('run_dir')}")
+    # Print and save results
+    if args.use_pareto:
+        # Multi-objective: Report and save Pareto front
+        print("\n=== Pareto Front ===")
+        pareto_trials = study.best_trials
+        print(f"Found {len(pareto_trials)} Pareto-optimal solutions:")
+
+        pareto_results = []
+        for trial in pareto_trials:
+            if len(trial.values) == 2:
+                cr, acc = trial.values
+                print(f"Trial #{trial.number}: CR={cr:.2f}, Acc={acc:.4f}")
+                print(f"  Run dir: {trial.user_attrs.get('run_dir')}")
+
+                pareto_results.append({
+                    "trial_number": trial.number,
+                    "CR": cr,
+                    "acc_quantized": acc,
+                    "acc_pre": trial.user_attrs.get("acc_pre"),
+                    "acc_drop_pp": trial.user_attrs.get("acc_drop_pp"),
+                    "params": trial.params,
+                    "run_dir": trial.user_attrs.get("run_dir")
+                })
+
+        # Save Pareto results to JSON
+        pareto_file = base_runs / f"{study_name}_pareto_results.json"
+        with open(pareto_file, "w") as f:
+            json.dump({
+                "study_name": study_name,
+                "n_trials": len(study.trials),
+                "n_pareto": len(pareto_results),
+                "preset": args.preset,
+                "pareto_front": pareto_results
+            }, f, indent=2)
+        print(f"\nSaved Pareto front to: {pareto_file}")
+
+    else:
+        # Single-objective: Report best trial
+        best = study.best_trial
+        print("\n=== Best Trial ===")
+        print(f"Trial #{best.number}")
+        print(f"Score (objective): {best.value:.6f}")
+        print(
+            f"CR: {best.user_attrs.get('CR')} | acc_pre: {best.user_attrs.get('acc_pre')} "
+            f"| acc_post: {best.user_attrs.get('acc_post')} | drop_pp: {best.user_attrs.get('acc_drop_pp')}"
+        )
+        print("Params:")
+        for k, v in best.params.items():
+            print(f"  {k}: {v}")
+        print(f"Run dir: {best.user_attrs.get('run_dir')}")
 
 
 if __name__ == "__main__":

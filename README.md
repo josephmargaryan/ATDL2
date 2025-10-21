@@ -266,22 +266,77 @@ python scripts/plot_mixture.py --run-dir runs/my_experiment --checkpoint quantiz
 
 ## Hyperparameter Optimization
 
-Use Bayesian optimization (Optuna) for multi-objective tuning (maximize compression, minimize accuracy drop):
+The repository includes advanced hyperparameter optimization using Optuna with support for both single-objective and multi-objective optimization.
+
+### Single-Objective Optimization (Default)
+
+Maximizes compression rate with quadratic penalty for accuracy drops exceeding a threshold:
 
 ```bash
 python scripts/tune_optuna.py \
   --preset lenet_300_100 \
   --n-trials 30 \
-  --study-name sws_optimization \
-  --storage sqlite:///sws_optuna.db \
-  --sampler tpe \
   --save-dir runs \
   --max-acc-drop 0.5 \
   --penalty 25 \
-  --pretrain-epochs 0 \
-  --retrain-epochs 100 \
   --load-pretrained runs/pretrained/model.pt
 ```
+
+### Multi-Objective Pareto Optimization
+
+Finds Pareto-optimal solutions for the compression-accuracy trade-off without arbitrary penalty weights:
+
+```bash
+# Run multi-objective optimization
+python scripts/tune_optuna.py \
+  --preset lenet_300_100 \
+  --n-trials 50 \
+  --use-pareto \
+  --save-dir runs
+
+# Visualize Pareto front
+python scripts/tune_optuna_pareto_viz.py \
+  --pareto-json runs/*_pareto_results.json \
+  --annotate
+```
+
+### Early Stopping with Pruning
+
+Terminate unpromising trials early to save computation (requires `--cr-every > 0`):
+
+```bash
+python scripts/tune_optuna.py \
+  --preset wrn_16_4 \
+  --n-trials 100 \
+  --enable-pruning \
+  --pruning-warmup-steps 10 \
+  --pruning-warmup-trials 5 \
+  --cr-every 5 \
+  --retrain-epochs 40 \
+  --save-dir runs
+```
+
+### Combined Multi-Objective with Pruning
+
+```bash
+python scripts/tune_optuna.py \
+  --preset lenet5 \
+  --n-trials 100 \
+  --use-pareto \
+  --enable-pruning \
+  --cr-every 10 \
+  --save-dir runs
+```
+
+### Key Options
+
+- `--use-pareto`: Enable multi-objective optimization (CR and accuracy)
+- `--enable-pruning`: Enable MedianPruner for early stopping
+- `--pruning-warmup-steps`: Epochs before pruning can occur (default: 10)
+- `--pruning-warmup-trials`: Trials to complete before pruning starts (default: 5)
+- `--sampler`: Choose TPE (default) or BoTorch sampler (single-objective only)
+- `--storage`: Optional SQLite database for persistent studies
+- `--load-pretrained`: Reuse pretrained checkpoint across trials for speed
 
 ## Output Files
 
