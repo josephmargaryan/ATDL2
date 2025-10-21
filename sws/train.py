@@ -101,7 +101,7 @@ def train_standard(
             scheduler.step()
 
         test_acc = None
-        if (ep % eval_every) == 0:
+        if eval_every > 0 and (ep % eval_every) == 0:
             test_acc = evaluate(model, test_loader, device)
         if logger:
             logger.log(
@@ -242,7 +242,7 @@ def retrain_soft_weight_sharing(
             pbar.set_postfix(ce=f"{(running_ce/max(1,n)):.4f}", tau=f"{tau_eff:.4g}")
 
         test_acc = None
-        if (ep % eval_every) == 0:
+        if eval_every > 0 and (ep % eval_every) == 0:
             test_acc = evaluate(model, test_loader, device)
             last_test_acc = test_acc
 
@@ -251,7 +251,7 @@ def retrain_soft_weight_sharing(
             viz.on_epoch_end(ep, model, prior, test_acc=last_test_acc)
 
         cr = ""
-        if cr_every and (ep % cr_every) == 0:
+        if cr_every > 0 and (ep % cr_every) == 0:
             rep = compression_report(model, prior, dataset="", **(cr_kwargs or {}))
             cr = f"{rep['CR']:.2f}"
 
