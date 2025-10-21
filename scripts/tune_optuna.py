@@ -45,31 +45,30 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
     Returns (cmd_list, run_dir_path).
     """
     # ---- Sample the hyperparameters (Bayesian search space) ----
-    # Choose ranges conservatively; feel free to widen for CIFAR.
+    # Modified for LeNet-300-100 multi-objective Pareto optimization
     hp = {}
-    hp["tau"] = trial.suggest_float("tau", 5e-4, 5e-2, log=True)
-    hp["complexity_mode"] = "keras"
-    hp["num_components"] = trial.suggest_categorical(
-        "num_components", [8, 17, 32, 49, 64, 91]
-    )
-    hp["pi0"] = trial.suggest_float("pi0", 0.985, 0.999)
-    #hp["init_sigma"] = trial.suggest_float("init_sigma", 0.05, 0.2, log=True)
-    hp["lr_w"] = (
-        args.lr_pre
-        if args.lr_pre
-        else trial.suggest_float("lr_w", 1e-4, 1e-2, log=True)
-    )
-    hp["lr_theta_means"] = trial.suggest_float("lr_theta_means", 5e-5, 3e-4, log=True)
-    hp["lr_theta_gammas"] = trial.suggest_float("lr_theta_gammas", 5e-5, 3e-2, log=True)
-    hp["lr_theta_rhos"] = trial.suggest_float("lr_theta_rhos", 5e-5, 3e-2, log=True)
-    hp["tau_warmup_epochs"] = 0
-    hp["gamma_alpha"] = trial.suggest_float("gamma_alpha", 100, 1000)
-    hp["gamma_beta"] = trial.suggest_float("gamma_beta", 0.01, 15)
-    hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 0, 10000)
-    hp["gamma_beta_zero"] = trial.suggest_float("gamma_beta_zero", 0, 10)
-    hp["weight_decay"] = 0.05
-    hp["quant_assign"] = "map"
-    hp["merge_kl_thresh"] = trial.suggest_float("merge_kl_thresh", 1e-5, 2e-2, log=True)
+
+    # User-specified ranges:
+    hp["tau"] = trial.suggest_float("tau", 3e-3, 1e-2, log=True)  # User specified: [3e-3, 1e-2]
+    hp["gamma_alpha"] = trial.suggest_float("gamma_alpha", 100, 500)  # User specified: [100, 500]
+    hp["gamma_beta"] = trial.suggest_float("gamma_beta", 0.05, 0.5)  # User specified: [0.05, 0.5]
+    hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 3000, 6000)  # User specified: [3000, 6000]
+    hp["gamma_beta_zero"] = trial.suggest_float("gamma_beta_zero", 1, 5)  # User specified: [1, 5]
+
+    # Fixed values as specified or from LeNet-300-100 defaults:
+    hp["num_components"] = 17  # Fixed as specified by user
+    hp["merge_kl_thresh"] = 1e-10  # Fixed as specified by user
+
+    # Fixed to LeNet-300-100 preset defaults:
+    hp["pi0"] = 0.999  # Default from lenet_300_100 preset
+    hp["lr_w"] = 5e-4  # Default from lenet_300_100 preset
+    hp["lr_theta_means"] = 1e-4  # Default from lenet_300_100 preset
+    hp["lr_theta_gammas"] = 3e-3  # Default from lenet_300_100 preset
+    hp["lr_theta_rhos"] = 3e-3  # Default from lenet_300_100 preset
+    hp["complexity_mode"] = "keras"  # User specified: keras mode
+    hp["tau_warmup_epochs"] = 0  # User specified: no warmup
+    hp["weight_decay"] = 0.0  # Default weight_decay (no weight decay)
+    hp["quant_assign"] = "map"  # User specified: MAP assignment
 
     # Optionally let users tune these too:
     if args.allow_pbits:
