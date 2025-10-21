@@ -109,12 +109,13 @@ def main():
     info_text += f"Best CR: {max(crs):.2f}\n"
     info_text += f"Best Acc: {max(accs):.4f}"
     ax.text(
-        0.02,
+        0.98,
         0.98,
         info_text,
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="top",
+        horizontalalignment="right",
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
 
