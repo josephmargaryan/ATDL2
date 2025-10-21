@@ -72,7 +72,7 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
         "num_components", [8, 17, 32, 49, 64, 91]
     )
     hp["pi0"] = trial.suggest_float("pi0", 0.985, 0.999)
-    hp["init_sigma"] = trial.suggest_float("init_sigma", 0.05, 0.2, log=True)
+    #hp["init_sigma"] = trial.suggest_float("init_sigma", 0.05, 0.2, log=True)
     hp["lr_w"] = (
         args.lr_pre
         if args.lr_pre
@@ -135,8 +135,8 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
         str(hp["num_components"]),
         "--pi0",
         str(hp["pi0"]),
-        "--init-sigma",
-        str(hp["init_sigma"]),
+        #"--init-sigma",
+        #str(hp["init_sigma"]),
         "--merge-kl-thresh",
         str(hp["merge_kl_thresh"]),
         "--lr-w",
