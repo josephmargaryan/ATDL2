@@ -1,11 +1,24 @@
 # sws/data.py
 from typing import Tuple
+import random
+import numpy as np
+import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 
+def worker_init_fn(worker_id):
+    """
+    Ensure each DataLoader worker has a unique but deterministic seed.
+    This is critical for reproducibility when num_workers > 0.
+    """
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+
+
 def make_loaders(
-    dataset: str, batch_size: int, num_workers: int
+    dataset: str, batch_size: int, num_workers: int, seed: int = 42
 ) -> Tuple[DataLoader, DataLoader, int]:
     if dataset == "mnist":
         # Paper's Keras example scales to [0,1] (no mean/std normalization).
@@ -17,6 +30,9 @@ def make_loaders(
         test = datasets.MNIST(
             root="./data", train=False, download=True, transform=tf_test
         )
+        # Create generator for reproducibility
+        generator = torch.Generator()
+        generator.manual_seed(seed)
         return (
             DataLoader(
                 train,
@@ -24,6 +40,8 @@ def make_loaders(
                 shuffle=True,
                 num_workers=num_workers,
                 pin_memory=True,
+                generator=generator,
+                worker_init_fn=worker_init_fn,
             ),
             DataLoader(
                 test,
@@ -31,6 +49,7 @@ def make_loaders(
                 shuffle=False,
                 num_workers=num_workers,
                 pin_memory=True,
+                worker_init_fn=worker_init_fn,
             ),
             10,
         )
@@ -55,6 +74,9 @@ def make_loaders(
         )
         train = DS(root="./data", train=True, download=True, transform=tf_train)
         test = DS(root="./data", train=False, download=True, transform=tf_test)
+        # Create generator for reproducibility
+        generator = torch.Generator()
+        generator.manual_seed(seed)
         return (
             DataLoader(
                 train,
@@ -62,6 +84,8 @@ def make_loaders(
                 shuffle=True,
                 num_workers=num_workers,
                 pin_memory=True,
+                generator=generator,
+                worker_init_fn=worker_init_fn,
             ),
             DataLoader(
                 test,
@@ -69,6 +93,7 @@ def make_loaders(
                 shuffle=False,
                 num_workers=num_workers,
                 pin_memory=True,
+                worker_init_fn=worker_init_fn,
             ),
             num_classes,
         )

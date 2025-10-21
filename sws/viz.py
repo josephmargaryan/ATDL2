@@ -125,7 +125,9 @@ class TrainingGifVisualizer:
         w0 = self._w0
 
         # Full random permutation per epoch (like Keras, not a fixed subset)
-        I = np.random.permutation(len(w0))
+        # Use epoch-based seed for reproducibility
+        rng = np.random.RandomState(seed=epoch + 12345)
+        I = rng.permutation(len(w0))
 
         # mixture params
         mu, sigma2, _ = prior.mixture_params()

@@ -288,7 +288,7 @@ def main():
 
     # Data & model
     train_loader, test_loader, num_classes = make_loaders(
-        args.dataset, args.batch_size, args.num_workers
+        args.dataset, args.batch_size, args.num_workers, seed=args.seed
     )
     model = make_model(args.model, args.dataset, num_classes).to(device)
 
