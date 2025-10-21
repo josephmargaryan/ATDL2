@@ -49,7 +49,7 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
     # Choose ranges conservatively; feel free to widen for CIFAR.
     hp = {}
     hp["tau"] = trial.suggest_float("tau", 5e-4, 5e-2, log=True)
-    hp["complexity_mode"] = trial.suggest_categorical("complexity_mode", ["keras"])
+    hp["complexity_mode"] = "keras"
     hp["num_components"] = trial.suggest_categorical(
         "num_components", [8, 17, 32, 49, 64, 91]
     )
@@ -65,7 +65,7 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
     hp["tau_warmup_epochs"] = 0
     hp["gamma_alpha"] = trial.suggest_float("gamma_alpha", 100, 1000)
     hp["gamma_beta"] = trial.suggest_float("gamma_beta", 0.01, 15)
-    hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 50, 1000)
+    hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 0, 10000)
     hp["gamma_beta_zero"] = trial.suggest_float("gamma_beta_zero", 0, 10)
     hp["weight_decay"] = 0
     hp["quant_assign"] = "map"
