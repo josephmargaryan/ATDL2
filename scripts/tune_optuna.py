@@ -355,7 +355,9 @@ def main():
                     pass
             # Return a very low score so the sampler learns to avoid this region
             if args.use_pareto:
-                return 0.0, 0.0  # Very bad CR and accuracy
+                # Return sentinel values dominated by all valid solutions
+                # (CR >= 1 and accuracy > 0 for successful runs, so (0.0, 0.0) is always dominated)
+                return 0.0, 0.0
             else:
                 return -1e9
 
@@ -366,6 +368,23 @@ def main():
         # Multi-objective: Report and save Pareto front
         print("\n=== Pareto Front ===")
         pareto_trials = study.best_trials
+
+        if len(pareto_trials) == 0:
+            print("No Pareto-optimal solutions found.")
+            print("All trials may have failed. Check ERROR.txt files in run directories.")
+            # Still save empty results for consistency
+            pareto_file = base_runs / f"{study_name}_pareto_results.json"
+            with open(pareto_file, "w") as f:
+                json.dump({
+                    "study_name": study_name,
+                    "n_trials": len(study.trials),
+                    "n_pareto": 0,
+                    "preset": args.preset,
+                    "pareto_front": []
+                }, f, indent=2)
+            print(f"\nSaved empty results to: {pareto_file}")
+            return
+
         print(f"Found {len(pareto_trials)} Pareto-optimal solutions:")
 
         pareto_results = []
