@@ -67,7 +67,7 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
     hp["gamma_beta"] = trial.suggest_float("gamma_beta", 0.01, 15)
     hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 0, 10000)
     hp["gamma_beta_zero"] = trial.suggest_float("gamma_beta_zero", 0, 10)
-    hp["weight_decay"] = 0
+    hp["weight_decay"] = 0.05
     hp["quant_assign"] = "map"
     hp["merge_kl_thresh"] = trial.suggest_float("merge_kl_thresh", 1e-5, 2e-2, log=True)
 
