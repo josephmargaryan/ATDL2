@@ -30,6 +30,7 @@ class MixturePrior(nn.Module):
         learn_pi0: bool = False,
         init_means: torch.Tensor = None,
         init_log_sigma2: float = math.log(0.25**2),
+        device: Optional[torch.device] = None,  # NEW: device parameter
         # --- Hyper-priors ON by default (tutorial values) ---
         gamma_alpha: Optional[float] = 250.0,  # non-zero comps
         gamma_beta: Optional[float] = 0.1,
@@ -45,14 +46,24 @@ class MixturePrior(nn.Module):
         self.learn_pi0 = learn_pi0
         self.pi0_init = float(pi0)
 
-        if init_means is None:
-            init_means = torch.linspace(-0.6, 0.6, steps=J - 1)
-        self.mu = nn.Parameter(init_means.clone())  # (J-1,)
-        self.log_sigma2 = nn.Parameter(torch.full((J - 1,), init_log_sigma2))
-        self.pi_logits = nn.Parameter(torch.zeros(J - 1))  # softmax -> π_{1:}
+        # Determine device - default to CPU if not specified
+        if device is None:
+            device = torch.device('cpu')
+        elif not isinstance(device, torch.device):
+            device = torch.device(device)
 
-        self.register_buffer('mu0', torch.tensor(0.0))
-        self.log_sigma2_0 = nn.Parameter(torch.tensor(init_log_sigma2))
+        # Initialize all tensors on the correct device from the start
+        if init_means is None:
+            init_means = torch.linspace(-0.6, 0.6, steps=J - 1, device=device)
+        else:
+            init_means = init_means.to(device)
+
+        self.mu = nn.Parameter(init_means.clone())  # (J-1,)
+        self.log_sigma2 = nn.Parameter(torch.full((J - 1,), init_log_sigma2, device=device))
+        self.pi_logits = nn.Parameter(torch.zeros(J - 1, device=device))  # softmax -> π_{1:}
+
+        self.register_buffer('mu0', torch.tensor(0.0, device=device))
+        self.log_sigma2_0 = nn.Parameter(torch.tensor(init_log_sigma2, device=device))
 
         # Hyper-priors
         self.gamma_alpha = gamma_alpha
@@ -64,20 +75,25 @@ class MixturePrior(nn.Module):
         self.eps = 1e-8
 
     def mixture_params(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # Ensure all tensors are on the same device as mu (the learnable parameter)
+        device = self.mu.device
+
         pi_nonzero = torch.softmax(self.pi_logits, dim=0)
         if self.learn_pi0:
             pi0 = torch.clamp(
-                torch.tensor(self.pi0_init, device=self.mu.device), 0.5, 0.9999
+                torch.tensor(self.pi0_init, device=device, dtype=self.mu.dtype), 0.5, 0.9999
             )
             pi = torch.cat([pi0.unsqueeze(0), (1.0 - pi0) * pi_nonzero])
         else:
             pi = torch.cat(
                 [
-                    torch.tensor([self.pi0_init], device=self.mu.device),
+                    torch.tensor([self.pi0_init], device=device, dtype=self.mu.dtype),
                     (1.0 - self.pi0_init) * pi_nonzero,
                 ]
             )
-        mu = torch.cat([self.mu0.to(self.mu.device).unsqueeze(0), self.mu])
+        # mu0 is a registered buffer, should be on correct device after .to(device) call
+        # but we explicitly ensure it here
+        mu = torch.cat([self.mu0.unsqueeze(0), self.mu])
         sigma2 = torch.cat(
             [self.log_sigma2_0.exp().unsqueeze(0), self.log_sigma2.exp()]
         )
@@ -98,7 +114,9 @@ class MixturePrior(nn.Module):
         self, weights: List[torch.Tensor], chunk: int = 1_000_000
     ) -> torch.Tensor:
         # −∑ log p(w)  (+ hyper-priors)
-        total = 0.0
+        # Initialize total as a tensor on the correct device
+        device = self.mu.device
+        total = torch.tensor(0.0, device=device, dtype=self.mu.dtype)
         for W in weights:
             w = W.view(-1)
             for start in range(0, w.numel(), chunk):
@@ -265,7 +283,14 @@ def init_mixture(
     init_sigma: float = 0.25,
     device=None,
 ) -> MixturePrior:
+    # Normalize device parameter
+    if device is None:
+        device = torch.device('cpu')
+    elif not isinstance(device, torch.device):
+        device = torch.device(device)
+
     # means: from pretrained weights' range, or fixed range [-0.6,0.6]
+    # Initialize tensors on correct device from the start
     if init_means_mode == "from_weights":
         weights = torch.cat(
             [p.detach().flatten().cpu() for p in collect_weight_params(model)]
@@ -273,14 +298,16 @@ def init_mixture(
         wmin, wmax = weights.min().item(), weights.max().item()
         if wmin == wmax:
             wmin, wmax = -0.6, 0.6
-        means = torch.linspace(wmin, wmax, steps=J - 1)
+        means = torch.linspace(wmin, wmax, steps=J - 1, device=device)
     else:
-        means = torch.linspace(init_range_min, init_range_max, steps=J - 1)
+        means = torch.linspace(init_range_min, init_range_max, steps=J - 1, device=device)
+
     prior = MixturePrior(
         J=J,
         pi0=pi0,
         learn_pi0=False,
-        init_means=means.to(device) if device else means,
+        init_means=means,  # Already on correct device
         init_log_sigma2=math.log(init_sigma**2),
+        device=device,  # Pass device to constructor
     )
     return prior

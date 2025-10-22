@@ -161,7 +161,7 @@ def compression_report(
 
         idx = torch.argmax(scores, dim=1)
         comp_ids = idx.view_as(W)
-        comp_ids = torch.where(comp_ids > 0, comp_ids, torch.tensor(0, device=device))
+        comp_ids = torch.where(comp_ids > 0, comp_ids, torch.tensor(0, device=device, dtype=comp_ids.dtype))
 
         # CSR on flattened 2D view
         W2d = flatten_conv_to_2d(W)
