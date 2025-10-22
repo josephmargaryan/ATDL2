@@ -61,7 +61,7 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
 
     # Fixed to LeNet-300-100 preset defaults:
     hp["pi0"] = 0.999  # Default from lenet_300_100 preset
-    hp["lr_w"] = 5e-4  # Default from lenet_300_100 preset
+    hp["lr_w"] = 1e-3  # Match pretraining learning rate
     hp["lr_theta_means"] = 1e-4  # Default from lenet_300_100 preset
     hp["lr_theta_gammas"] = 3e-3  # Default from lenet_300_100 preset
     hp["lr_theta_rhos"] = 3e-3  # Default from lenet_300_100 preset
@@ -215,7 +215,7 @@ def main():
         default=None,
         help="If None, falls back to preset default inside run_sws.py",
     )
-    ap.add_argument("--lr-pre", type=float, default=5e-4)
+    ap.add_argument("--lr-pre", type=float, default=1e-3)
     ap.add_argument("--optim-pre", choices=["adam", "sgd"], default="adam")
     ap.add_argument("--eval-every", type=int, default=1)
     ap.add_argument("--cr-every", type=int, default=0)
