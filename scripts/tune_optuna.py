@@ -260,11 +260,11 @@ def main():
 
     # Create study with appropriate configuration
     if args.use_pareto:
-        # Multi-objective: maximize both CR and accuracy
+        # Multi-objective: maximize CR, minimize accuracy loss
         if args.storage:
             study = optuna.create_study(
                 study_name=study_name,
-                directions=["maximize", "maximize"],  # [CR, accuracy]
+                directions=["maximize", "minimize"],  # [CR, accuracy_loss]
                 sampler=sampler,
                 storage=args.storage,
                 load_if_exists=True,
@@ -272,7 +272,7 @@ def main():
         else:
             study = optuna.create_study(
                 study_name=study_name,
-                directions=["maximize", "maximize"],  # [CR, accuracy]
+                directions=["maximize", "minimize"],  # [CR, accuracy_loss]
                 sampler=sampler,
             )
     else:
@@ -333,8 +333,9 @@ def main():
             trial.set_user_attr("acc_drop_pp", drop_pp)
 
             if args.use_pareto:
-                # Multi-objective: return tuple (CR, accuracy)
-                return cr, acc_post
+                # Multi-objective: return tuple (CR, accuracy_loss)
+                acc_loss = acc_pre - acc_post  # Raw difference (not percentage points)
+                return cr, acc_loss
             else:
                 # Single-objective: return penalized score
                 # Hard-constraint via quadratic penalty
@@ -355,8 +356,9 @@ def main():
             # Return a very low score so the sampler learns to avoid this region
             if args.use_pareto:
                 # Return sentinel values dominated by all valid solutions
-                # (CR >= 1 and accuracy > 0 for successful runs, so (0.0, 0.0) is always dominated)
-                return 0.0, 0.0
+                # (CR >= 1 and accuracy_loss should be small for good solutions)
+                # Return low CR and high accuracy loss (both bad)
+                return 0.0, 1.0
             else:
                 return -1e9
 
@@ -389,14 +391,15 @@ def main():
         pareto_results = []
         for trial in pareto_trials:
             if len(trial.values) == 2:
-                cr, acc = trial.values
-                print(f"Trial #{trial.number}: CR={cr:.2f}, Acc={acc:.4f}")
+                cr, acc_loss = trial.values
+                print(f"Trial #{trial.number}: CR={cr:.2f}, Acc_Loss={acc_loss:.4f}")
                 print(f"  Run dir: {trial.user_attrs.get('run_dir')}")
 
                 pareto_results.append({
                     "trial_number": trial.number,
                     "CR": cr,
-                    "acc_quantized": acc,
+                    "acc_loss": acc_loss,  # New field for accuracy loss
+                    "acc_quantized": trial.user_attrs.get("acc_post"),  # Keep for reference
                     "acc_pre": trial.user_attrs.get("acc_pre"),
                     "acc_drop_pp": trial.user_attrs.get("acc_drop_pp"),
                     "params": trial.params,
