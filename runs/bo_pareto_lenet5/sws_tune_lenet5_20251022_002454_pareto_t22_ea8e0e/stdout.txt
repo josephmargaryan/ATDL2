@@ -1,0 +1,54 @@
+[No pretrain requested] test acc: 0.1017
+[sws] ep 001/40 train_ce=0.2838 LC=-4.797e+05 tau=0.004252  elapsed=8s
+[sws] ep 002/40 train_ce=0.0734 LC=-7.528e+05 tau=0.004252  elapsed=16s
+[sws] ep 003/40 train_ce=0.0495 LC=-9.264e+05 tau=0.004252  elapsed=24s
+[sws] ep 004/40 train_ce=0.0381 LC=-9.699e+05 tau=0.004252  elapsed=32s
+[sws] ep 005/40 train_ce=0.0317 LC=-9.718e+05 tau=0.004252  elapsed=40s
+[sws] ep 006/40 train_ce=0.0273 LC=-9.721e+05 tau=0.004252  elapsed=48s
+[sws] ep 007/40 train_ce=0.0220 LC=-9.747e+05 tau=0.004252  elapsed=56s
+[sws] ep 008/40 train_ce=0.0198 LC=-9.765e+05 tau=0.004252  elapsed=1m04s
+[sws] ep 009/40 train_ce=0.0172 LC=-9.800e+05 tau=0.004252  elapsed=1m12s
+[sws] ep 010/40 train_ce=0.0145 LC=-9.856e+05 tau=0.004252  elapsed=1m20s
+[sws] ep 011/40 train_ce=0.0135 LC=-9.929e+05 tau=0.004252  elapsed=1m28s
+[sws] ep 012/40 train_ce=0.0125 LC=-9.992e+05 tau=0.004252  elapsed=1m36s
+[sws] ep 013/40 train_ce=0.0124 LC=-1.003e+06 tau=0.004252  elapsed=1m44s
+[sws] ep 014/40 train_ce=0.0111 LC=-1.013e+06 tau=0.004252  elapsed=1m52s
+[sws] ep 015/40 train_ce=0.0099 LC=-1.027e+06 tau=0.004252  elapsed=2m00s
+[sws] ep 016/40 train_ce=0.0094 LC=-1.038e+06 tau=0.004252  elapsed=2m08s
+[sws] ep 017/40 train_ce=0.0097 LC=-1.048e+06 tau=0.004252  elapsed=2m16s
+[sws] ep 018/40 train_ce=0.0083 LC=-1.066e+06 tau=0.004252  elapsed=2m24s
+[sws] ep 019/40 train_ce=0.0092 LC=-1.080e+06 tau=0.004252  elapsed=2m32s
+[sws] ep 020/40 train_ce=0.0077 LC=-1.100e+06 tau=0.004252 test_acc=0.9892  CR_est=63.68 elapsed=2m41s
+[sws] ep 021/40 train_ce=0.0082 LC=-1.127e+06 tau=0.004252  elapsed=2m49s
+[sws] ep 022/40 train_ce=0.0086 LC=-1.149e+06 tau=0.004252  elapsed=2m57s
+[sws] ep 023/40 train_ce=0.0083 LC=-1.179e+06 tau=0.004252  elapsed=3m05s
+[sws] ep 024/40 train_ce=0.0086 LC=-1.215e+06 tau=0.004252  elapsed=3m13s
+[sws] ep 025/40 train_ce=0.0083 LC=-1.257e+06 tau=0.004252  elapsed=3m21s
+[sws] ep 026/40 train_ce=0.0065 LC=-1.321e+06 tau=0.004252  elapsed=3m29s
+[sws] ep 027/40 train_ce=0.0081 LC=-1.383e+06 tau=0.004252  elapsed=3m37s
+[sws] ep 028/40 train_ce=0.0079 LC=-1.432e+06 tau=0.004252  elapsed=3m46s
+[sws] ep 029/40 train_ce=0.0076 LC=-1.485e+06 tau=0.004252  elapsed=3m54s
+[sws] ep 030/40 train_ce=0.0075 LC=-1.516e+06 tau=0.004252  elapsed=4m02s
+[sws] ep 031/40 train_ce=0.0062 LC=-1.533e+06 tau=0.004252  elapsed=4m10s
+[sws] ep 032/40 train_ce=0.0067 LC=-1.546e+06 tau=0.004252  elapsed=4m18s
+[sws] ep 033/40 train_ce=0.0052 LC=-1.551e+06 tau=0.004252  elapsed=4m26s
+[sws] ep 034/40 train_ce=0.0061 LC=-1.541e+06 tau=0.004252  elapsed=4m34s
+[sws] ep 035/40 train_ce=0.0050 LC=-1.532e+06 tau=0.004252  elapsed=4m41s
+[sws] ep 036/40 train_ce=0.0048 LC=-1.533e+06 tau=0.004252  elapsed=4m49s
+[sws] ep 037/40 train_ce=0.0050 LC=-1.549e+06 tau=0.004252  elapsed=4m57s
+[sws] ep 038/40 train_ce=0.0042 LC=-1.566e+06 tau=0.004252  elapsed=5m05s
+[sws] ep 039/40 train_ce=0.0042 LC=-1.569e+06 tau=0.004252  elapsed=5m13s
+[sws] ep 040/40 train_ce=0.0035 LC=-1.568e+06 tau=0.004252 test_acc=0.9918  CR_est=51.76 elapsed=5m22s
+[Re-trained (soft weight sharing)] test acc: 0.9918
+[Quantized] test acc: 0.9921
+{
+  "top1_error_pre[%]": 89.83,
+  "top1_error_post[%]": 0.7900000000000018,
+  "Delta[%]": -89.03999999999999,
+  "|W|": 430500,
+  "|W_nonzero|/|W|[%]": 4.518931475029036,
+  "CR": 51.75717409436216,
+  "acc_pretrain": 0.1017,
+  "acc_retrain": 0.9918,
+  "acc_quantized": 0.9921
+}

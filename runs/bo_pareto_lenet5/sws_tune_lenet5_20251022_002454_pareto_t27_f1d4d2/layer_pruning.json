@@ -1,0 +1,46 @@
+[
+  {
+    "layer": "conv1(Conv2d)",
+    "shape": [
+      20,
+      1,
+      5,
+      5
+    ],
+    "total": 500,
+    "nnz": 432,
+    "sparsity_pct": 13.600000000000001
+  },
+  {
+    "layer": "conv2(Conv2d)",
+    "shape": [
+      50,
+      20,
+      5,
+      5
+    ],
+    "total": 25000,
+    "nnz": 5180,
+    "sparsity_pct": 79.28
+  },
+  {
+    "layer": "fc1(Linear)",
+    "shape": [
+      500,
+      800
+    ],
+    "total": 400000,
+    "nnz": 5822,
+    "sparsity_pct": 98.5445
+  },
+  {
+    "layer": "fc2(Linear)",
+    "shape": [
+      10,
+      500
+    ],
+    "total": 5000,
+    "nnz": 5000,
+    "sparsity_pct": 0.0
+  }
+]

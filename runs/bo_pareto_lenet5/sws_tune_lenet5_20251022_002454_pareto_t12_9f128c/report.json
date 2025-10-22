@@ -1,0 +1,68 @@
+{
+  "orig_bits": 13776000,
+  "compressed_bits": 262633,
+  "CR": 52.45342359870999,
+  "nnz": 19024,
+  "layers": [
+    {
+      "layer": "Conv2d",
+      "shape": [
+        20,
+        1,
+        5,
+        5
+      ],
+      "orig_bits": 16000,
+      "bits_IR": 189,
+      "bits_IC": 329,
+      "bits_A": 1297,
+      "bits_codebook": 512,
+      "nnz": 435,
+      "passthrough": false
+    },
+    {
+      "layer": "Conv2d",
+      "shape": [
+        50,
+        20,
+        5,
+        5
+      ],
+      "orig_bits": 800000,
+      "bits_IR": 663,
+      "bits_IC": 17606,
+      "bits_A": 13201,
+      "bits_codebook": 512,
+      "nnz": 6027,
+      "passthrough": false
+    },
+    {
+      "layer": "Linear",
+      "shape": [
+        500,
+        800
+      ],
+      "orig_bits": 12800000,
+      "bits_IR": 6513,
+      "bits_IC": 44103,
+      "bits_A": 17196,
+      "bits_codebook": 512,
+      "nnz": 7562,
+      "passthrough": false
+    },
+    {
+      "layer": "Linear",
+      "shape": [
+        10,
+        500
+      ],
+      "orig_bits": 160000,
+      "bits_IR": 0,
+      "bits_IC": 0,
+      "bits_A": 0,
+      "bits_codebook": 0,
+      "nnz": 5000,
+      "passthrough": true
+    }
+  ]
+}

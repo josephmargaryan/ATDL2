@@ -1,0 +1,113 @@
+{
+  "study_name": "sws_tune_lenet5_20251022_002454_pareto",
+  "n_trials": 50,
+  "n_pareto": 7,
+  "preset": "lenet5",
+  "pareto_front": [
+    {
+      "trial_number": 9,
+      "CR": 52.02357979328029,
+      "acc_quantized": 0.9934,
+      "acc_pre": 0.1168,
+      "acc_drop_pp": -87.66,
+      "params": {
+        "tau": 0.006661009844027112,
+        "gamma_alpha": 224.6844304357644,
+        "gamma_beta": 0.28403060953001485,
+        "gamma_alpha_zero": 4640.130838029839,
+        "gamma_beta_zero": 1.7394178221021082
+      },
+      "run_dir": "runs/bo_pareto_lenet5/sws_tune_lenet5_20251022_002454_pareto_t9_2d007b"
+    },
+    {
+      "trial_number": 10,
+      "CR": 59.17881659549973,
+      "acc_quantized": 0.9916,
+      "acc_pre": 0.1079,
+      "acc_drop_pp": -88.37,
+      "params": {
+        "tau": 0.00964043095008709,
+        "gamma_alpha": 410.05312934444584,
+        "gamma_beta": 0.4727745237038851,
+        "gamma_alpha_zero": 5684.4820512829465,
+        "gamma_beta_zero": 3.3915999152443406
+      },
+      "run_dir": "runs/bo_pareto_lenet5/sws_tune_lenet5_20251022_002454_pareto_t10_4096cb"
+    },
+    {
+      "trial_number": 13,
+      "CR": 57.86144502406693,
+      "acc_quantized": 0.9924,
+      "acc_pre": 0.118,
+      "acc_drop_pp": -87.44,
+      "params": {
+        "tau": 0.005766144235922074,
+        "gamma_alpha": 156.36968998990505,
+        "gamma_beta": 0.41098864133931784,
+        "gamma_alpha_zero": 3223.6519310393123,
+        "gamma_beta_zero": 4.947547746402069
+      },
+      "run_dir": "runs/bo_pareto_lenet5/sws_tune_lenet5_20251022_002454_pareto_t13_0019e1"
+    },
+    {
+      "trial_number": 14,
+      "CR": 58.261296161588824,
+      "acc_quantized": 0.9917,
+      "acc_pre": 0.0854,
+      "acc_drop_pp": -90.63,
+      "params": {
+        "tau": 0.007601715832039173,
+        "gamma_alpha": 179.48627261366897,
+        "gamma_beta": 0.052484952705621084,
+        "gamma_alpha_zero": 5446.384285364502,
+        "gamma_beta_zero": 3.8274293753904685
+      },
+      "run_dir": "runs/bo_pareto_lenet5/sws_tune_lenet5_20251022_002454_pareto_t14_f9ef13"
+    },
+    {
+      "trial_number": 16,
+      "CR": 56.175834930473435,
+      "acc_quantized": 0.9929,
+      "acc_pre": 0.1004,
+      "acc_drop_pp": -89.25,
+      "params": {
+        "tau": 0.008480465487938637,
+        "gamma_alpha": 349.3192507310232,
+        "gamma_beta": 0.19890411118369217,
+        "gamma_alpha_zero": 3190.675050858071,
+        "gamma_beta_zero": 2.243929286862649
+      },
+      "run_dir": "runs/bo_pareto_lenet5/sws_tune_lenet5_20251022_002454_pareto_t16_c9aa7b"
+    },
+    {
+      "trial_number": 30,
+      "CR": 60.41707782382738,
+      "acc_quantized": 0.9915,
+      "acc_pre": 0.0953,
+      "acc_drop_pp": -89.62,
+      "params": {
+        "tau": 0.008954352388471814,
+        "gamma_alpha": 195.82475626678897,
+        "gamma_beta": 0.1152026924410504,
+        "gamma_alpha_zero": 4468.358280832689,
+        "gamma_beta_zero": 4.942601816442403
+      },
+      "run_dir": "runs/bo_pareto_lenet5/sws_tune_lenet5_20251022_002454_pareto_t30_b5ce63"
+    },
+    {
+      "trial_number": 40,
+      "CR": 54.392975030402575,
+      "acc_quantized": 0.993,
+      "acc_pre": 0.0982,
+      "acc_drop_pp": -89.48,
+      "params": {
+        "tau": 0.0064986920277607975,
+        "gamma_alpha": 133.65598599801953,
+        "gamma_beta": 0.1227329213425762,
+        "gamma_alpha_zero": 5695.662565581238,
+        "gamma_beta_zero": 3.4257162386383597
+      },
+      "run_dir": "runs/bo_pareto_lenet5/sws_tune_lenet5_20251022_002454_pareto_t40_54537c"
+    }
+  ]
+}
