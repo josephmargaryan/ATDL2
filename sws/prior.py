@@ -51,7 +51,7 @@ class MixturePrior(nn.Module):
         self.log_sigma2 = nn.Parameter(torch.full((J - 1,), init_log_sigma2))
         self.pi_logits = nn.Parameter(torch.zeros(J - 1))  # softmax -> π_{1:}
 
-        self.mu0 = torch.tensor(0.0)
+        self.register_buffer('mu0', torch.tensor(0.0))
         self.log_sigma2_0 = nn.Parameter(torch.tensor(init_log_sigma2))
 
         # Hyper-priors

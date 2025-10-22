@@ -265,6 +265,10 @@ def main():
     set_seed(args.seed)
     device = get_device()
 
+    # Warn if running on CPU
+    if device.type == "cpu":
+        print("\n⚠️  WARNING: Running on CPU! GPU not detected. Training will be slow.\n")
+
     run_name = (
         args.run_name or f"{args.dataset}_{args.model}_{time.strftime('%Y%m%d_%H%M%S')}"
     )
