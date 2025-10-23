@@ -154,7 +154,7 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
         str(hp["pbits_fc"]),
         "--pbits-conv",
         str(hp["pbits_conv"]),
-    ]
+    ])
 
     if args.no_huffman:
         cmd.append("--no-huffman")
