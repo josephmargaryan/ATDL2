@@ -96,10 +96,15 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
         str(args.batch_size),
         "--num-workers",
         str(args.num_workers),
-        "--pretrain-epochs",
-        str(args.pretrain_epochs),
-        "--retrain-epochs",
-        str(args.retrain_epochs),
+    ]
+
+    # Only add pretrain/retrain epochs if explicitly provided
+    if args.pretrain_epochs is not None:
+        cmd.extend(["--pretrain-epochs", str(args.pretrain_epochs)])
+    if args.retrain_epochs is not None:
+        cmd.extend(["--retrain-epochs", str(args.retrain_epochs)])
+
+    cmd.extend([
         "--lr-pre",
         str(args.lr_pre),
         "--optim-pre",

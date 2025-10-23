@@ -298,7 +298,12 @@ def main():
 
     # Pretrain/load
     pre_ckpt = os.path.join(run_dir, f"{args.dataset}_{args.model}_pre.pt")
-    if args.load_pretrained and os.path.isfile(args.load_pretrained):
+    if args.load_pretrained:
+        if not os.path.isfile(args.load_pretrained):
+            raise FileNotFoundError(
+                f"Pretrained checkpoint not found: {args.load_pretrained}\n"
+                f"Please check the path and ensure the file exists."
+            )
         model.load_state_dict(torch.load(args.load_pretrained, map_location=device))
         pre_acc = evaluate(model, test_loader, device)
         print(f"[Loaded pretrained] test acc: {pre_acc:.4f}")
@@ -333,6 +338,8 @@ def main():
         print(f"[Pretrained] test acc: {pre_acc:.4f}")
         torch.save(model.state_dict(), pre_ckpt)
     else:
+        print("⚠️  WARNING: No pretraining and no checkpoint loaded.")
+        print("   Evaluating randomly initialized model (accuracy will be ~random chance).")
         pre_acc = evaluate(model, test_loader, device)
         print(f"[No pretrain requested] test acc: {pre_acc:.4f}")
 
