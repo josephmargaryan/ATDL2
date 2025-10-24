@@ -1,2 +1,0 @@
-phase,epoch,train_ce,complexity,total_loss,tau,test_acc,CR_est,elapsed
-retrain,1,0.0024585252665099686,-248361.40625,,0.0018293814886630763,0.9820,,21s

@@ -1,0 +1,360 @@
+{
+  "study_name": "sws_tune_lenet_300_100_20251024_092459_pareto",
+  "n_trials": 50,
+  "n_pareto": 22,
+  "preset": "lenet_300_100",
+  "pareto_front": [
+    {
+      "trial_number": 1,
+      "CR": 82.47550443437513,
+      "acc_loss": 0.1563,
+      "acc_quantized": 0.8232,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 15.629999999999999,
+      "params": {
+        "tau": 0.003619824155310538,
+        "gamma_alpha": 123.23344486727979,
+        "gamma_beta": 0.4397792655987208,
+        "gamma_alpha_zero": 4803.345035229626,
+        "gamma_beta_zero": 3.832290311184182
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t1_31ed07"
+    },
+    {
+      "trial_number": 3,
+      "CR": 75.07182515202256,
+      "acc_loss": 0.09200000000000008,
+      "acc_quantized": 0.8875,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 9.200000000000008,
+      "params": {
+        "tau": 0.0037412745072790666,
+        "gamma_alpha": 221.69689718381508,
+        "gamma_beta": 0.28614039423450705,
+        "gamma_alpha_zero": 4295.835055926347,
+        "gamma_beta_zero": 2.1649165607921677
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t3_31a82b"
+    },
+    {
+      "trial_number": 6,
+      "CR": 55.60095557615237,
+      "acc_loss": 0.0020999999999999908,
+      "acc_quantized": 0.9774,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 0.20999999999999908,
+      "params": {
+        "tau": 0.006234383941568225,
+        "gamma_alpha": 168.2096494749166,
+        "gamma_beta": 0.0792732168433758,
+        "gamma_alpha_zero": 5846.65661176,
+        "gamma_beta_zero": 4.862528132298237
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t6_adec46"
+    },
+    {
+      "trial_number": 11,
+      "CR": 43.30699854599437,
+      "acc_loss": -0.0034999999999999476,
+      "acc_quantized": 0.983,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": -0.34999999999999476,
+      "params": {
+        "tau": 0.00910226966940628,
+        "gamma_alpha": 135.3970008207678,
+        "gamma_beta": 0.13819228808861533,
+        "gamma_alpha_zero": 3135.6818667316143,
+        "gamma_beta_zero": 2.3013213230530574
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t11_0f79e3"
+    },
+    {
+      "trial_number": 12,
+      "CR": 76.34206233980392,
+      "acc_loss": 0.10840000000000005,
+      "acc_quantized": 0.8711,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 10.840000000000005,
+      "params": {
+        "tau": 0.004790185681676498,
+        "gamma_alpha": 208.53961270955836,
+        "gamma_beta": 0.4229318791183682,
+        "gamma_alpha_zero": 4070.259980080768,
+        "gamma_beta_zero": 2.123738038749523
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t12_f94fee"
+    },
+    {
+      "trial_number": 13,
+      "CR": 63.34371909368749,
+      "acc_loss": 0.01319999999999999,
+      "acc_quantized": 0.9663,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 1.319999999999999,
+      "params": {
+        "tau": 0.005766144235922074,
+        "gamma_alpha": 156.36968998990505,
+        "gamma_beta": 0.41098864133931784,
+        "gamma_alpha_zero": 3223.6519310393123,
+        "gamma_beta_zero": 4.947547746402069
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t13_7e0461"
+    },
+    {
+      "trial_number": 15,
+      "CR": 95.11601420308627,
+      "acc_loss": 0.30580000000000007,
+      "acc_quantized": 0.6737,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 30.580000000000005,
+      "params": {
+        "tau": 0.007216117696718232,
+        "gamma_alpha": 408.5081386743783,
+        "gamma_beta": 0.08332009328034067,
+        "gamma_alpha_zero": 4075.397185632818,
+        "gamma_beta_zero": 1.4634762381005189
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t15_76f343"
+    },
+    {
+      "trial_number": 17,
+      "CR": 64.89863397761643,
+      "acc_loss": 0.04349999999999998,
+      "acc_quantized": 0.936,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 4.349999999999998,
+      "params": {
+        "tau": 0.0044376464843244035,
+        "gamma_alpha": 391.84247133522564,
+        "gamma_beta": 0.3369008621098459,
+        "gamma_alpha_zero": 5661.6382277289795,
+        "gamma_beta_zero": 2.888859700647797
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t17_062e38"
+    },
+    {
+      "trial_number": 19,
+      "CR": 59.03093469342499,
+      "acc_loss": 0.007800000000000029,
+      "acc_quantized": 0.9717,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 0.7800000000000029,
+      "params": {
+        "tau": 0.005436463500174125,
+        "gamma_alpha": 309.0931317527976,
+        "gamma_beta": 0.24239345826134734,
+        "gamma_alpha_zero": 3076.2573802322854,
+        "gamma_beta_zero": 1.4315657079732178
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t19_6ff3b0"
+    },
+    {
+      "trial_number": 21,
+      "CR": 80.0729439854112,
+      "acc_loss": 0.1513,
+      "acc_quantized": 0.8282,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 15.129999999999999,
+      "params": {
+        "tau": 0.00405014771338119,
+        "gamma_alpha": 264.1531692142519,
+        "gamma_beta": 0.3899980123443719,
+        "gamma_alpha_zero": 3686.3944964748675,
+        "gamma_beta_zero": 1.307919639315172
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t21_b8593b"
+    },
+    {
+      "trial_number": 22,
+      "CR": 85.09125053691476,
+      "acc_loss": 0.1786000000000001,
+      "acc_quantized": 0.8009,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 17.86000000000001,
+      "params": {
+        "tau": 0.004252321877997224,
+        "gamma_alpha": 164.48851490160177,
+        "gamma_beta": 0.4683639435541579,
+        "gamma_alpha_zero": 5424.361138693251,
+        "gamma_beta_zero": 3.533615026041694
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t22_939914"
+    },
+    {
+      "trial_number": 25,
+      "CR": 72.34678624813154,
+      "acc_loss": 0.06920000000000004,
+      "acc_quantized": 0.9103,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 6.9200000000000035,
+      "params": {
+        "tau": 0.005017031633226901,
+        "gamma_alpha": 427.20590636899726,
+        "gamma_beta": 0.43732876246535457,
+        "gamma_alpha_zero": 3020.856391593572,
+        "gamma_beta_zero": 3.042989210310263
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t25_097a42"
+    },
+    {
+      "trial_number": 27,
+      "CR": 75.12346550021165,
+      "acc_loss": 0.10420000000000007,
+      "acc_quantized": 0.8753,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 10.420000000000007,
+      "params": {
+        "tau": 0.004427078249463775,
+        "gamma_alpha": 307.51624869734644,
+        "gamma_beta": 0.36635853150283004,
+        "gamma_alpha_zero": 4090.888807137882,
+        "gamma_beta_zero": 4.887128330883843
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t27_c72764"
+    },
+    {
+      "trial_number": 30,
+      "CR": 52.8981457331992,
+      "acc_loss": -0.0029000000000000137,
+      "acc_quantized": 0.9824,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": -0.29000000000000137,
+      "params": {
+        "tau": 0.008954352388471814,
+        "gamma_alpha": 195.82475626678897,
+        "gamma_beta": 0.1152026924410504,
+        "gamma_alpha_zero": 4468.358280832689,
+        "gamma_beta_zero": 4.942601816442403
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t30_432f1a"
+    },
+    {
+      "trial_number": 31,
+      "CR": 79.51015531660693,
+      "acc_loss": 0.1361,
+      "acc_quantized": 0.8434,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 13.61,
+      "params": {
+        "tau": 0.004015011664848485,
+        "gamma_alpha": 368.8542189623514,
+        "gamma_beta": 0.39272882689792293,
+        "gamma_alpha_zero": 3712.912631977199,
+        "gamma_beta_zero": 3.9128653944474383
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t31_6647b7"
+    },
+    {
+      "trial_number": 32,
+      "CR": 71.86885688492917,
+      "acc_loss": 0.05900000000000005,
+      "acc_quantized": 0.9205,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 5.900000000000006,
+      "params": {
+        "tau": 0.004671186828938137,
+        "gamma_alpha": 352.92233223743176,
+        "gamma_beta": 0.3350883698424026,
+        "gamma_alpha_zero": 4607.324052224276,
+        "gamma_beta_zero": 1.3611590802176332
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t32_510023"
+    },
+    {
+      "trial_number": 36,
+      "CR": 61.87864567821419,
+      "acc_loss": 0.012800000000000034,
+      "acc_quantized": 0.9667,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 1.2800000000000034,
+      "params": {
+        "tau": 0.004523322995830579,
+        "gamma_alpha": 145.38940849623563,
+        "gamma_beta": 0.46611212822535325,
+        "gamma_alpha_zero": 5632.018060142943,
+        "gamma_beta_zero": 2.0317665108606224
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t36_b99fc1"
+    },
+    {
+      "trial_number": 38,
+      "CR": 94.97285183905099,
+      "acc_loss": 0.28170000000000006,
+      "acc_quantized": 0.6978,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 28.170000000000005,
+      "params": {
+        "tau": 0.003355851334200886,
+        "gamma_alpha": 458.8863031813307,
+        "gamma_beta": 0.4551881257234987,
+        "gamma_alpha_zero": 4899.304371819804,
+        "gamma_beta_zero": 2.3561191641948027
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t38_0b762e"
+    },
+    {
+      "trial_number": 39,
+      "CR": 73.22427857959478,
+      "acc_loss": 0.07290000000000008,
+      "acc_quantized": 0.9066,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 7.290000000000008,
+      "params": {
+        "tau": 0.004567888757573531,
+        "gamma_alpha": 390.38227154809573,
+        "gamma_beta": 0.4536996169786597,
+        "gamma_alpha_zero": 5661.259272795352,
+        "gamma_beta_zero": 4.1195021834304955
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t39_5e718f"
+    },
+    {
+      "trial_number": 41,
+      "CR": 90.39720692326468,
+      "acc_loss": 0.22420000000000007,
+      "acc_quantized": 0.7553,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 22.420000000000005,
+      "params": {
+        "tau": 0.0030334035977945786,
+        "gamma_alpha": 140.58861714641284,
+        "gamma_beta": 0.3485757960986251,
+        "gamma_alpha_zero": 3015.184751538656,
+        "gamma_beta_zero": 1.6432322056699946
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t41_b018b1"
+    },
+    {
+      "trial_number": 45,
+      "CR": 73.39525426065379,
+      "acc_loss": 0.08000000000000007,
+      "acc_quantized": 0.8995,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": 8.000000000000007,
+      "params": {
+        "tau": 0.004024373247479235,
+        "gamma_alpha": 489.2042219009782,
+        "gamma_beta": 0.2268939761000422,
+        "gamma_alpha_zero": 5676.13966553134,
+        "gamma_beta_zero": 3.5245545039890516
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t45_a83fea"
+    },
+    {
+      "trial_number": 49,
+      "CR": 52.53212955425639,
+      "acc_loss": -0.0031999999999999806,
+      "acc_quantized": 0.9827,
+      "acc_pre": 0.9795,
+      "acc_drop_pp": -0.31999999999999806,
+      "params": {
+        "tau": 0.009173166998252288,
+        "gamma_alpha": 271.2736593269257,
+        "gamma_beta": 0.4849946685696513,
+        "gamma_alpha_zero": 5890.859931267758,
+        "gamma_beta_zero": 4.41203782186944
+      },
+      "run_dir": "runs/bo_pareto_lenet3002/sws_tune_lenet_300_100_20251024_092459_pareto_t49_3a6fa8"
+    }
+  ]
+}
