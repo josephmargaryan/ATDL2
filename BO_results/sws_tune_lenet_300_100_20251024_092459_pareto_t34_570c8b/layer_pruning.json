@@ -1,0 +1,32 @@
+[
+  {
+    "layer": "fc1(Linear)",
+    "shape": [
+      300,
+      784
+    ],
+    "total": 235200,
+    "nnz": 16184,
+    "sparsity_pct": 93.11904761904762
+  },
+  {
+    "layer": "fc2(Linear)",
+    "shape": [
+      100,
+      300
+    ],
+    "total": 30000,
+    "nnz": 4847,
+    "sparsity_pct": 83.84333333333333
+  },
+  {
+    "layer": "fc3(Linear)",
+    "shape": [
+      10,
+      100
+    ],
+    "total": 1000,
+    "nnz": 1000,
+    "sparsity_pct": 0.0
+  }
+]

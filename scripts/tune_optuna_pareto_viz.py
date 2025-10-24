@@ -87,22 +87,37 @@ def main():
 
     # Annotate points with trial numbers if requested
     if args.annotate:
+        # Annotate all points with smart positioning to avoid overlaps
+        # Define various offset positions to cycle through
+        offset_positions = [
+            (10, 10),   # top-right
+            (-10, 10),  # top-left
+            (10, -10),  # bottom-right
+            (-10, -10), # bottom-left
+            (15, 0),    # right
+            (-15, 0),   # left
+            (0, 15),    # top
+            (0, -15),   # bottom
+        ]
+
         for i, trial_num in enumerate(trial_nums):
+            # Cycle through offset positions to minimize overlap
+            offset = offset_positions[i % len(offset_positions)]
+
             ax.annotate(
                 f"T{trial_num}",
-                (acc_losses[i], crs[i]),  # Swapped to match new axes
-                xytext=(5, 5),
+                (acc_losses[i], crs[i]),
+                xytext=offset,
                 textcoords="offset points",
                 fontsize=8,
-                alpha=0.6,
+                alpha=0.7,
             )
 
     # Labels and title (swapped for new axes)
     ax.set_xlabel("Accuracy Loss (Pre - Quantized)", fontsize=12)
     ax.set_ylabel("Compression Ratio (CR)", fontsize=12)
     ax.set_title(
-        f"Pareto Front - {data.get('study_name', 'Unknown Study')}\n"
-        f"({len(pareto_front)} solutions from {data.get('n_trials', '?')} trials)",
+        "Pareto Front (50 trials)",
         fontsize=14,
     )
 

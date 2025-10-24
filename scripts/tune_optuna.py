@@ -45,19 +45,17 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
     Returns (cmd_list, run_dir_path).
     """
     # ---- Sample the hyperparameters (Bayesian search space) ----
-    # Modified for LeNet-300-100 multi-objective Pareto optimization
     hp = {}
 
-    # User-specified ranges:
-    hp["tau"] = trial.suggest_float("tau", 3e-3, 1e-2, log=True)  # User specified: [3e-3, 1e-2]
-    hp["gamma_alpha"] = trial.suggest_float("gamma_alpha", 100, 500)  # User specified: [100, 500]
-    hp["gamma_beta"] = trial.suggest_float("gamma_beta", 0.05, 0.5)  # User specified: [0.05, 0.5]
-    hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 3000, 6000)  # User specified: [3000, 6000]
-    hp["gamma_beta_zero"] = trial.suggest_float("gamma_beta_zero", 1, 5)  # User specified: [1, 5]
+    hp["tau"] = trial.suggest_float("tau", 3e-3, 1e-2, log=True)
+    hp["gamma_alpha"] = trial.suggest_float("gamma_alpha", 100, 500)
+    hp["gamma_beta"] = trial.suggest_float("gamma_beta", 0.05, 0.5)
+    hp["gamma_alpha_zero"] = trial.suggest_float("gamma_alpha_zero", 3000, 6000)
+    hp["gamma_beta_zero"] = trial.suggest_float("gamma_beta_zero", 1, 5)
 
-    # Fixed values as specified or from LeNet-300-100 defaults:
-    hp["num_components"] = 17  # Fixed as specified by user
-    hp["merge_kl_thresh"] = 1e-10  # Fixed as specified by user
+    # Fixed values
+    hp["num_components"] = 17
+    hp["merge_kl_thresh"] = 1e-10
 
     # Fixed to LeNet-300-100 preset defaults:
     hp["pi0"] = 0.999  # Default from lenet_300_100 preset
@@ -65,10 +63,10 @@ def build_cmd(args, trial, run_name: str) -> Tuple[list, Path]:
     hp["lr_theta_means"] = 1e-4  # Default from lenet_300_100 preset
     hp["lr_theta_gammas"] = 3e-3  # Default from lenet_300_100 preset
     hp["lr_theta_rhos"] = 3e-3  # Default from lenet_300_100 preset
-    hp["complexity_mode"] = "keras"  # User specified: keras mode
-    hp["tau_warmup_epochs"] = 0  # User specified: no warmup
-    hp["weight_decay"] = 0.0  # Default weight_decay (no weight decay)
-    hp["quant_assign"] = "map"  # User specified: MAP assignment
+    hp["complexity_mode"] = "keras"
+    hp["tau_warmup_epochs"] = 0
+    hp["weight_decay"] = 0.0
+    hp["quant_assign"] = "map"
 
     # Optionally let users tune these too:
     if args.allow_pbits:

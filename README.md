@@ -40,34 +40,31 @@ The method achieves significant compression rates (up to 64x) with minimal accur
 ## Repository Structure
 
 ```
-torch-SWS/
+ATDL2/
 │
 ├── sws/                          # Core library
-│   ├── models.py                 # LeNet-300-100, LeNet-5-Caffe, WideResNet-16-4
-│   ├── data.py                   # Dataset loaders (MNIST, CIFAR10, CIFAR100)
-│   ├── prior.py                  # MixturePrior: Gaussian mixture model with hyperpriors
-│   ├── train.py                  # Training loops (pretrain + soft weight-sharing retrain)
-│   ├── compress.py               # CSR bit accounting and compression reporting
-│   ├── utils.py                  # Helpers for weight collection, logging, etc.
-│   └── viz.py                    # TrainingGifVisualizer for weight evolution animations
+│   ├── models.py                 # Neural network models
+│   ├── data.py                   # Dataset loaders
+│   ├── prior.py                  # Gaussian mixture model with hyperpriors
+│   ├── train.py                  # Training loops
+│   ├── compress.py               # Compression reporting
+│   ├── utils.py                  # Helper functions
+│   └── viz.py                    # Visualization tools
 │
-├── scripts/                      # Visualization and analysis tools
-│   ├── plot_curves.py            # Training curves (loss, accuracy, compression)
-│   ├── plot_mixture_dynamics.py  # Mixture evolution over epochs
-│   ├── plot_weights_scatter.py   # Weight movement visualization (w0 → wT)
-│   ├── plot_mixture.py           # Final mixture + weight histogram
-│   ├── plot_filters.py           # Convolutional filter visualization
-│   ├── plot_pareto.py            # Pareto frontier for hyperparameter sweeps
-│   ├── inspect_assignments.py    # Weight-to-component assignment analysis
-│   ├── tune_optuna.py            # Bayesian hyperparameter optimization
-│   └── sweep_ablation.py         # Ablation study automation
+├── experiments/                  # Experiment notebooks
+│   ├── training.ipynb           # Train baseline models
+│   ├── BO.ipynb                 # Bayesian optimization for hyperparameters
+│   ├── compression.ipynb        # Full SWS compression pipeline
+│   └── no_hyperpriors.ipynb    # Ablation without hyperpriors
 │
-├── run_sws.py                    # Main entry point for training
-├── requirements.txt              # Python dependencies
+├── scripts/                      # Analysis and visualization
+│   ├── tune_optuna.py           # Hyperparameter optimization
+│   ├── plot_*.py                # Various plotting scripts
+│   └── ...
 │
-├── tutorial_pytorch.ipynb        # Tutorial notebook
-├── sws_colab.ipynb              # Google Colab-ready notebook
-└── sws_experiments.ipynb         # Experimental results notebook
+├── checkpoints/                  # Pretrained models
+├── run_sws.py                   # Main training script
+└── requirements.txt             # Dependencies
 ```
 
 ## Installation
@@ -141,6 +138,45 @@ python run_sws.py --preset lenet5 \
 python run_sws.py --preset wrn_16_4 \
   --pretrain-epochs 200 --retrain-epochs 60 \
   --run-name wrn_cifar100 --save-dir runs --seed 1
+```
+
+## How to Run
+
+### Running Experiments (Recommended)
+
+The fastest way to reproduce results is through the experiment notebooks in `experiments/`:
+
+1. **Train baseline models** (`experiments/training.ipynb`):
+   ```bash
+   jupyter notebook experiments/training.ipynb
+   # Or from terminal:
+   python run_sws.py --preset lenet_300_100 --pretrain-epochs 20 --retrain-epochs 0 --save-dir checkpoints
+   ```
+
+2. **Find optimal hyperparameters** (`experiments/BO.ipynb`):
+   ```bash
+   jupyter notebook experiments/BO.ipynb
+   # Or from terminal:
+   python scripts/tune_optuna.py --preset lenet_300_100 --use-pareto --n-trials 50
+   ```
+
+3. **Run full compression** (`experiments/compression.ipynb`):
+   - Open notebook and fill in hyperparameters from step 2
+   - Run all cells to generate compressed model and plots
+
+4. **Ablation study** (`experiments/no_hyperpriors.ipynb`):
+   - Runs compression without hyperpriors for comparison
+
+### Notebook Workflow
+
+```bash
+cd experiments/
+jupyter notebook
+
+# Run notebooks in order:
+# 1. training.ipynb    → Creates baseline checkpoints
+# 2. BO.ipynb          → Finds optimal hyperparameters
+# 3. compression.ipynb → Applies compression with best parameters
 ```
 
 ## Usage
